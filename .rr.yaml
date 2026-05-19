@@ -1,0 +1,10 @@
+server:
+  command: "php rr-worker.php"
+
+http:
+  address: 0.0.0.0:8080
+
+workers:
+  pool:
+    num_workers: 4
+    max_jobs: 1000
