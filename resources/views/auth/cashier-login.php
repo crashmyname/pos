@@ -12,6 +12,7 @@
 
     <link href="<?= asset('tabler/dist/css/tabler.min.css') ?>"
           rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
 
     <style>
 
@@ -66,8 +67,8 @@
 
             </div>
 
-            <form action="<?= url('cashier/login/process') ?>"
-                  method="post">
+            <form action=""
+                  method="post" id="formlogin">
 
                 <?= csrf() ?>
 
@@ -104,7 +105,7 @@
                 </div>
 
                 <!-- BUTTON -->
-                <button class="btn btn-primary w-100 btn-lg">
+                <button class="btn btn-primary w-100 btn-lg" id="btnlogin">
 
                     LOGIN CASHIER
 
@@ -117,6 +118,74 @@
     </div>
 
 </div>
-
+<!-- Libs JS -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    $(document).ready(function(){
+          $('#btnlogin').on('click', function(e){
+            e.preventDefault();
+            const btn = $(this)
+            const loading = $('#loading')
+            btn.hide()
+            loading.show()
+              var url = '<?= route('login.cashier')?>';
+              var formdata = new FormData($('#formlogin')[0]);
+              $.ajax({
+                  type: 'POST',
+                  url: url,
+                  data:formdata,
+                  headers: {
+                    'X-CSRF-TOKEN' : '<?= csrfHeader()?>'
+                  },
+                  processData:false,
+                  contentType:false,
+                  dataType: 'json',
+                  success:function(response){
+                      if (response.statusCode === 200) {
+                          btn.show()
+                          loading.hide()
+                          let timerInterval;
+                          Swal.fire({
+                              icon: 'success',
+                              title: "Login Berhasil",
+                              timer: 2000,
+                              timerProgressBar: true,
+                              didOpen: () => {
+                                  Swal.showLoading();
+                                  const timer = Swal.getPopup().querySelector("b");
+                                  timerInterval = setInterval(() => {
+                                  timer.textContent = `${Swal.getTimerLeft()}`;
+                                  }, 100);
+                              },
+                              willClose: () => {
+                                  clearInterval(timerInterval);
+                              }
+                          }).then((result) => {
+                              window.location.href = "<?= url('') ?>";
+                          });
+                      } else {
+                          btn.show()
+                          loading.hide()
+                          Swal.fire({
+                              icon: 'error',
+                              title: 'Login Gagal',
+                              text: response.message
+                          })
+                      }
+                  },
+                  error: function (xhr, status, error) {
+                    let response = JSON.parse(xhr.responseText)
+                      btn.show()
+                      loading.hide()
+                      Swal.fire({
+                          icon: 'error',
+                          title: 'Oops...',
+                          text: response.message
+                      })
+                  }
+              })
+          })
+      });
+</script>
 </body>
 </html>

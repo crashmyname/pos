@@ -1,7 +1,3 @@
-<?php 
-use Bpjs\Framework\Helpers\Bpjs;
-use Bpjs\Framework\Helpers\Session;
-?>
 <!doctype html>
 <html lang="en">
   <head>
@@ -9,7 +5,7 @@ use Bpjs\Framework\Helpers\Session;
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
     <meta name="csrf-token" content="<?= csrfHeader() ?>">
     <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
-    <title>Task Flow (TODO APPS)</title>
+    <title>Admin Panel</title>
 
     <!-- CSS files -->
     <link href="<?= asset('tabler/dist/css/tabler.min.css?1692870487')?>" rel="stylesheet"/>
@@ -31,11 +27,6 @@ use Bpjs\Framework\Helpers\Session;
     <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.6/dist/htmx.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <!-- FULLCALENDAR -->
-    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css"
-          rel="stylesheet">
-
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
     
 
     <style>
@@ -84,7 +75,7 @@ use Bpjs\Framework\Helpers\Session;
           </button>
           <h1 class="navbar-brand navbar-brand-autodark">
             <a href="#">
-              TASK FLOW
+              ADMIN PANEL
             </a>
           </h1>
           <div class="navbar-nav flex-row d-lg-none">
@@ -125,15 +116,15 @@ use Bpjs\Framework\Helpers\Session;
                 <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown" aria-label="Open user menu">
                 <span class="avatar avatar-sm" style="background-image: url(<?= asset('default_profil.webp')?>)"></span>
                   <div class="d-none d-xl-block ps-2">
-                    <div>Fadli</div>
+                    <div><?= auth()->user()->name?></div>
                     <div class="mt-1 small text-secondary">
-                      admin
+                      <?= auth()->user()->role?>
                     </div>
                   </div>
                 </a>
                 <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
                   <a href="" class="dropdown-item">Profile</a>
-                  <form action="" method="post">
+                  <form action="<?= route('logout')?>" method="post">
                     <?= csrf()?>
                     <button class="dropdown-item">Logout</button>
                   </form>
@@ -143,7 +134,7 @@ use Bpjs\Framework\Helpers\Session;
           <div class="collapse navbar-collapse" id="sidebar-menu">
             <ul class="navbar-nav pt-lg-3">
               <li class="nav-item">
-                <a class="nav-link" hx-get="<?= url('')?>" href="#" hx-target="#content" hx-push-url="true" hx-swap="innerHTML show:top">
+                <a class="nav-link" href="<?= route('view.admin.home')?>">
                   <span class="nav-link-icon d-md-none d-lg-inline-block"><!-- Download SVG icon from http://tabler-icons.io/i/home -->
                     <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l-2 0l9 -9l9 9l-2 0" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" /><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" /></svg>
                   </span>
@@ -158,14 +149,23 @@ use Bpjs\Framework\Helpers\Session;
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-checklist"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M9.615 20h-2.615a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8" /><path d="M14 19l2 2l4 -4" /><path d="M9 8h4" /><path d="M9 12h2" /></svg>
                   </span>
                   <span class="nav-link-title">
-                    Task Management
+                    Master Data
                   </span>
                 </a>
                 <div class="dropdown-menu">
                   <div class="dropdown-menu-columns">
                     <div class="dropdown-menu-column">
-                      <a class="dropdown-item" href="">
-                        My Task
+                      <a class="dropdown-item" href="<?= route('view.admin.user')?>">
+                        Data User
+                      </a>
+                      <a class="dropdown-item" href="<?= route('view.admin.product')?>">
+                        Data Product
+                      </a>
+                      <a class="dropdown-item" href="<?= route('view.admin.category')?>">
+                        Data Category
+                      </a>
+                      <a class="dropdown-item" href="<?= route('view.admin.supplier')?>">
+                        Data Suppliers
                       </a>
                     </div>
                   </div>
@@ -177,17 +177,17 @@ use Bpjs\Framework\Helpers\Session;
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-folder"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M5 4h4l3 3h7a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2" /></svg>
                   </span>
                   <span class="nav-link-title">
-                    Projects
+                    Record
                   </span>
                 </a>
                 <div class="dropdown-menu">
                   <div class="dropdown-menu-columns">
                     <div class="dropdown-menu-column">
                       <a class="dropdown-item" href="">
-                        All Projects
+                        Transactions
                       </a>
                       <a class="dropdown-item" href="">
-                        Create Project
+                        Cashback History
                       </a>
                     </div>
                   </div>
@@ -249,15 +249,15 @@ use Bpjs\Framework\Helpers\Session;
                         <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown" aria-label="Open user menu">
                             <span class="avatar avatar-sm" style="background-image: url(<?= asset('default_profil.webp')?>)"></span>
                             <div class="d-none d-xl-block ps-2">
-                                <div>Fadli</div>
+                                <div><?= auth()->user()->name?></div>
                                 <div class="mt-1 small text-secondary">
-                                  admin
+                                  <?= auth()->user()->role?>
                                 </div>
                             </div>
                         </a>
                         <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
                             <a href="#" class="dropdown-item">Profile</a>
-                            <form action="" method="post">
+                            <form action="<?= route('logout')?>" method="post">
                               <?= csrf()?>
                               <button class="dropdown-item">Logout</button>
                             </form>

@@ -20,30 +20,36 @@ class SupplierController extends BaseController
     public function index()
     {
         $title = 'Suppliers';
-        return $this->view('supplier/index',compact('title'),'layouts/app');
+        return $this->view('admin/supplier',compact('title'),'layouts/app');
     }
 
-    public function getData()
+    public function getData(Request $request)
     {
-        $supplier = $this->supplierService->getData();
-        return json($supplier);
+        $supplier = $this->supplierService->getData($request);
+        return $this->json($supplier,$supplier['statusCode']);
     }
 
     public function create(Request $request)
     {
         $supplier = $this->supplierService->createSupplier($request->all());
-        return json($supplier);
+        return $this->json($supplier,$supplier['statusCode']);
     }
 
     public function update(Request $request, $id)
     {
         $supplier = $this->supplierService->updateSupplier($request->all(), $id);
-        return json($supplier);
+        return $this->json($supplier,$supplier['statusCode']);
     }
 
     public function destroy($id)
     {
         $supplier = $this->supplierService->destroySupplier($id);
-        return json($supplier);
+        return $this->json($supplier,$supplier['statusCode']);
+    }
+
+    public function import(Request $request)
+    {
+        $supplier = $this->supplierService->import($request->file('file'));
+        return $this->json($supplier,$supplier['statusCode']);
     }
 }

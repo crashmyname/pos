@@ -172,23 +172,23 @@
 
             <div class="shift-badge">
 
-                SHIFT ACTIVE
+                ACTIVE
 
             </div>
 
             <div class="text-end">
 
                 <div class="fw-bold">
-                    Fadli
+                    <?= auth()->user()->name?>
                 </div>
 
                 <div class="small text-secondary">
-                    Cashier
+                    <?= auth()->user()->role?>
                 </div>
 
             </div>
 
-            <form action="<?= url('logout') ?>"
+            <form action="<?= route('logout') ?>"
                   method="post">
 
                 <?= csrf() ?>
