@@ -18,7 +18,7 @@ class CreateProductsTable
         $table->decimal('sell_price','15,2');
         $table->bigInteger('stock_id')->nullable();
         $table->string('image')->nullable();
-        $table->integer('is_acative')->default(1);
+        $table->integer('is_active')->default(1);
         $table->timestamp('created_at')->default('CURRENT_TIMESTAMP');
         $table->timestamp('updated_at')->default('CURRENT_TIMESTAMP');
         $sql = $table->buildCreateSQL();

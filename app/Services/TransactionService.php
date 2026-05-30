@@ -13,15 +13,24 @@ class TransactionService
     // Service logic here
     private function invoiceNumber()
     {
-        $lastTransaction = Transaction::query()->latest('created_at')
-            ->first();
-        $lastInvoiceNumber = $lastTransaction ? $lastTransaction->invoice_number : null;
         $currentDate = Date::parse(Date::Now())->format('Ymd');
-        if($lastInvoiceNumber && substr($lastInvoiceNumber, 3, 8) === $currentDate){
-            $lastSequence = (int) substr($lastInvoiceNumber, 11);
-            $newSequence = str_pad($lastSequence + 1, 4, '0',STR_PAD_LEFT);
-            return 'INV' . $currentDate . $newSequence;
+        
+        // Cari transaksi terakhir dengan format INV + tanggal hari ini
+        $lastTransaction = Transaction::query()
+            ->where('invoice_number', 'LIKE', "INV{$currentDate}%")
+            ->orderBy('invoice_number', 'DESC')
+            ->first();
+        
+        if ($lastTransaction && $lastTransaction->invoice_number) {
+            // Extract sequence number (4 digit terakhir)
+            $lastSequence = (int) substr($lastTransaction->invoice_number, 11);
+            $newSequence = str_pad($lastSequence + 1, 4, '0', STR_PAD_LEFT);
+        } else {
+            // Tidak ada transaksi hari ini, mulai dari 0001
+            $newSequence = '0001';
         }
+        
+        return 'INV' . $currentDate . $newSequence;
     }
 
     public function dailyTransaction()
@@ -31,19 +40,27 @@ class TransactionService
             ->whereDate('created_at', $today)
             ->get();
     }
+
     public function createTransaction(array $data)
     {
         DB::beginTransaction();
         try{
+            $invoiceNumber = $this->invoiceNumber();
+            
+            // Validasi invoice number
+            if (empty($invoiceNumber)) {
+                throw new \Exception('Gagal generate invoice number');
+            }
+            
             $transaction = Transaction::create([
                 'invoice_number' => $this->invoiceNumber(),
                 'transaction_date' => Date::Now(),
-                'total_item' => $data['total_item'],
+                'total_item' => count($data['items']),
                 'sub_total' => $data['sub_total'],
                 'cashback_earn' => $data['total'] * 0.02,
                 'grand_total' => $data['total'],
                 'paid_amount' => $data['paid_amount'],
-                'change_amount' => $data['paid_amount'] - $data['total'],
+                'change_amount' => $data['change'] ?? 0,
                 'payment_method' => $data['payment_method'],
                 'notes' => $data['notes'] ?? null
             ]);
@@ -59,7 +76,7 @@ class TransactionService
                     ];
                 }
                 DetailTransaction::insertBatch($detailTransaction);
-                $cashback = Cashback::query()->where('member','=',$data['member'])->first();
+                $cashback = Cashback::query()->where('member','=',$data['member'])->latest()->first();
                 Cashback::create([
                     'member' => $data['member'],
                     'transaction_id' => $transaction->id,
@@ -75,7 +92,14 @@ class TransactionService
                 'status' => true,
                 'statusCode' => 201,
                 'message' => 'Transaction created',
-                'data' => $transaction->toArray()
+                'data' => [
+                    'id' => $transaction->id,
+                    'invoice' => $invoiceNumber,
+                    'date' => Date::parse($transaction->transaction_date)->format('d/m/Y H:i'),
+                    'total' => $transaction->grand_total,
+                    'payment' => $transaction->payment_method,
+                    'items' => $data['items']
+                ],
             ];
         } catch(\Exception $e){
             DB::rollback();

@@ -7,6 +7,7 @@ use App\Controllers\ChartController;
 use App\Controllers\HomeController;
 use App\Controllers\ProductController;
 use App\Controllers\ReportController;
+use App\Controllers\TransactionController;
 use App\Controllers\SupplierController;
 use App\Controllers\UserController;
 use Bpjs\Framework\Helpers\AuthMiddleware;
@@ -24,6 +25,7 @@ Route::group([AuthMiddleware::class], function(){
     Route::get('/product',[CashierController::class,'getProduct'])->name('data.cashier.product');
     Route::get('/daily/transaction',[CashierController::class,'getDailyTransaction'])->name('data.cashier.daily.transaction');
     Route::get('/report',[ReportController::class,'report'])->name('view.report');
+    Route::post('/transaction',[TransactionController::class, 'create'])->name('create.transaction');
 });
 // Route::get('/chart/label',[ChartController::class,'indexlabel']);
 

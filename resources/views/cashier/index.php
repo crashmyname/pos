@@ -9,20 +9,34 @@
             <div class="card pos-card mb-3">
 
                 <div class="card-body">
-
-                    <label class="form-label fw-bold">
-                        Search Product
-                    </label>
-
-                    <input type="text"
-                           id="search-product"
-                           class="form-control form-control"
-                           placeholder="Search product or barcode">
-
-                    <div class="product-search-list"
-                         id="product-results">
-
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">
+                                Scan Product
+                            </label>
+        
+                            <input type="text"
+                                   id="scan-product"
+                                   class="form-control form-control"
+                                   placeholder="Search product or barcode">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">
+                                Search Product
+                            </label>
+        
+                            <input type="text"
+                                   id="search-product"
+                                   class="form-control form-control"
+                                   placeholder="Search product or barcode">
+        
+                            <div class="product-search-list"
+                                 id="product-results">
+        
+                            </div>
+                        </div>
                     </div>
+
 
                 </div>
 
@@ -1103,7 +1117,7 @@ body{
 const members = [
 
     {
-        code:'08123456789',
+        code:'123456789',
         name:'Budi Santoso',
         cashback:25000,
         limit:1000000,
@@ -1377,6 +1391,40 @@ document.getElementById('search-product')
     });
 
     document.getElementById('product-results').innerHTML = html;
+
+});
+
+document.getElementById('scan-product')
+.addEventListener('keydown', function(e){
+
+    if(e.key !== 'Enter') return;
+
+    e.preventDefault();
+
+    let keyword = this.value.trim();
+
+    if(keyword === '') return;
+
+    let product = products.find(p =>
+        p.barcode === keyword ||
+        p.name.toLowerCase() === keyword.toLowerCase()
+    );
+
+    if(product){
+
+        addToCart(product.id);
+
+        // kosongkan search
+        this.value = '';
+
+        // kosongkan hasil pencarian
+        document.getElementById('product-results').innerHTML = '';
+
+    }else{
+
+        alert('Produk tidak ditemukan');
+
+    }
 
 });
 
@@ -2449,16 +2497,187 @@ function newTransaction(){
 
 }
 
+// Event listener pembayaran
+const PRINT_SERVER = 'http://10.173.168.167:3000';
+const API_URL = '<?= route('create.transaction')?>';
+const AUTH_SESSION = '<?= auth()->user()->name?>'
 document.getElementById('btn-complete-payment')
-.addEventListener('click',function(){
+.addEventListener('click', async function() {
+    
+    const btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+    
+    // const invoice = 'INV-' + Date.now();
+    
+    const subtotal = calculateTotal();
+    let total = subtotal;
+    let pay = total;
+    let change = 0;
+    let charge = 0;
+    
+    if (selectedPayment === 'cash') {
+        pay = parseInt(document.getElementById('cash-amount').value || 0);
+        change = pay - total;
+    } else if (selectedPayment === 'qris') {
+        charge = Math.round(total * 0.007);
+        pay = total + charge;
+        total = total + charge;
+    }
+    
+    // Data Tansaction
+    const transactionData = {
+        total_item: cart.length,                    // Jumlah item
+        sub_total: subtotal,                        // Subtotal
+        total: total,                               // Grand total
+        paid_amount: pay,                           // Jumlah bayar
+        payment_method: selectedPayment,            // Metode pembayaran
+        notes: '',                                  // Catatan (opsional)
+        member: selectedMember ? selectedMember.code : null,
+        items: cart.map(item => ({
+            product_id: item.id,
+            quantity: item.qty,                     // <-- PAKAI 'quantity' bukan 'qty'
+            price: item.price,
+        })),
+    };
 
-    // alert(
-    //     'Payment Success via ' +
-    //     selectedPayment.toUpperCase()
-    // );
-    generateReceipt();
+    try{
+        const dbResponse = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json',
+                'X-CSRF-TOKEN' : '<?= csrfHeader()?>'
+             },
+            body: JSON.stringify(transactionData)
+        });
+        
+        const dbResult = await dbResponse.json();
+        
+        if (!dbResult.status) {
+            throw new Error(dbResult.message);
+        }
+        
+        // Dapat invoice dari database
+        const invoiceNumber = dbResult.data.invoice;
+        const transactionDate = dbResult.data.date;
 
+        const receiptData = {
+            invoice: invoiceNumber,
+            date: transactionDate,
+            cashier: AUTH_SESSION,
+            payment: selectedPayment,
+            subtotal: subtotal,
+            discount: 0,
+            total: total,
+            pay: pay,
+            change: change,
+            charge: charge,
+            items: cart.map(item => ({
+                name: item.name,
+                qty: item.qty,
+                price: item.price,
+                subtotal: item.subtotal
+            })),
+            member: selectedMember ? {
+                name: selectedMember.name,
+                cashback: selectedMember.cashback
+            } : null
+        };
+        fetch(`${PRINT_SERVER}/print`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ receipt: receiptData })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                alert('Pembayaran berhasil! Struk dicetak.');
+                
+                cart = [];
+                renderCart();
+                
+                const modal = bootstrap.Modal.getInstance(
+                    document.getElementById('paymentModal')
+                );
+                modal.hide();
+
+                transactions.unshift(receiptData);
+                renderTransactions();
+                
+            } else {
+                alert('Print gagal: ' + result.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Gagal konek ke printer service');
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.textContent = 'COMPLETE PAYMENT';
+        });
+    } catch(error){
+        console.error(error)
+    }
+    
 });
+
+// function generateReceiptUI(data) {
+//     // Hide POS
+//     document.querySelector('.container-xl').classList.add('d-none');
+    
+//     // Hide modal
+//     bootstrap.Modal.getInstance(document.getElementById('paymentModal')).hide();
+    
+//     // Show receipt page
+//     document.getElementById('receipt-page').classList.remove('d-none');
+    
+//     // Isi data receipt
+//     document.getElementById('receipt-invoice').textContent = data.invoice;
+//     document.getElementById('receipt-date').textContent = data.date;
+//     document.getElementById('receipt-payment').textContent = data.payment.toUpperCase();
+//     document.getElementById('receipt-subtotal').textContent = formatRupiah(data.subtotal);
+//     document.getElementById('receipt-discount').textContent = formatRupiah(data.discount);
+//     document.getElementById('receipt-total').textContent = formatRupiah(data.total);
+//     document.getElementById('receipt-pay').textContent = formatRupiah(data.pay);
+//     document.getElementById('receipt-change').textContent = formatRupiah(data.change);
+//     document.getElementById('receipt-charge').textContent = formatRupiah(data.charge);
+    
+//     // Items
+//     let itemsHTML = '';
+//     data.items.forEach(item => {
+//         itemsHTML += `
+//             <div class="receipt-item">
+//                 <div class="item-name">${item.name}</div>
+//                 <div class="d-flex justify-content-between">
+//                     <div>${item.qty} x ${formatRupiah(item.price)}</div>
+//                     <div>${formatRupiah(item.subtotal)}</div>
+//                 </div>
+//             </div>
+//         `;
+//     });
+//     document.getElementById('receipt-items').innerHTML = itemsHTML;
+    
+//     // Member
+//     if (data.member) {
+//         document.getElementById('receipt-member').innerHTML = `
+//             <div class="receipt-divider"></div>
+//             <table class="receipt-table">
+//                 <tr>
+//                     <td>Member</td>
+//                     <td class="text-end">${data.member.name}</td>
+//                 </tr>
+//                 <tr>
+//                     <td>Cashback</td>
+//                     <td class="text-end">${formatRupiah(data.member.cashback)}</td>
+//                 </tr>
+//             </table>
+//         `;
+//     } else {
+//         document.getElementById('receipt-member').innerHTML = '';
+//     }
+// }
 
 document.addEventListener('keydown', function(e){
 
@@ -2491,7 +2710,7 @@ document.addEventListener('keyup',function(e){
 
 window.onload = function(){
 
-    document.getElementById('search-product')
+    document.getElementById('scan-product')
     .focus();
 
 }
