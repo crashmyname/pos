@@ -9,6 +9,10 @@ use Bpjs\Framework\Helpers\Validator;
 class ProductService
 {
     // Service logic here
+    public function getProduct()
+    {
+        return Product::query()->select('id','name','qrcode','sell_price')->paginate(25);
+    }
     public function getData($request)
     {
         if(!$request->isAjax()){

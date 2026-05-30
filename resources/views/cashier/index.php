@@ -1249,28 +1249,45 @@ document.getElementById('member-input')
 
 });
 
-const products = [
+// const products = [
 
-    {id:1, barcode:'899001', name:'Coca Cola', price:5000},
-    {id:2, barcode:'899002', name:'Sprite', price:7000},
-    {id:3, barcode:'899003', name:'Fanta', price:6000},
-    {id:4, barcode:'899004', name:'Le Minerale', price:4000},
-    {id:5, barcode:'899005', name:'Indomie Goreng', price:3500},
-    {id:6, barcode:'899006', name:'Chitato', price:10000},
-    {id:7, barcode:'899007', name:'Ultra Milk', price:8000},
-    {id:8, barcode:'899008', name:'Teh Botol', price:5000},
-    {id:9, barcode:'899009', name:'Good Day', price:7000},
-    {id:10, barcode:'899010', name:'Pocari Sweat', price:9000}
+//     {id:1, barcode:'899001', name:'Coca Cola', price:5000},
+//     {id:2, barcode:'899002', name:'Sprite', price:7000},
+//     {id:3, barcode:'899003', name:'Fanta', price:6000},
+//     {id:4, barcode:'899004', name:'Le Minerale', price:4000},
+//     {id:5, barcode:'899005', name:'Indomie Goreng', price:3500},
+//     {id:6, barcode:'899006', name:'Chitato', price:10000},
+//     {id:7, barcode:'899007', name:'Ultra Milk', price:8000},
+//     {id:8, barcode:'899008', name:'Teh Botol', price:5000},
+//     {id:9, barcode:'899009', name:'Good Day', price:7000},
+//     {id:10, barcode:'899010', name:'Pocari Sweat', price:9000}
 
-];
+// ];
 
+let products = []
 let cart = [];
 let holdBills = [];
 let transactions = [];
 let returnTransactionIndex = null;
 let returns = [];
 
-renderQuickProducts();
+async function fetchProducts(){
+    try{
+        const response = await fetch('<?= route('data.cashier.product')?>')
+        const result = await response.json()
+        products = result.data.map(item => ({
+            id: item.id,
+            barcode: item.qrcode,
+            name: item.name,
+            price: parseFloat(item.sell_price) || 0
+        }));
+        renderQuickProducts();
+    } catch(error){
+        console.error('Error fetching products:', error)
+    }
+}
+
+fetchProducts();
 
 function renderQuickProducts(){
 

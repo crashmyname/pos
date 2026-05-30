@@ -124,7 +124,7 @@
             <!-- MENU -->
             <div class="cashier-menu">
 
-                <a href="<?= url('cashier') ?>"
+                <a href="<?= url('') ?>"
                    class="<?= $title == 'Cashier' ? 'active' : ''?>">
 
                     POS

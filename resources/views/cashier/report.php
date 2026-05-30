@@ -19,7 +19,7 @@
 
         </div>
 
-        <button class="btn btn-primary">
+        <button class="btn btn-primary" id="printBtn">
 
             PRINT REPORT
 
@@ -219,7 +219,6 @@
                     <tr>
 
                         <th>Cashier</th>
-                        <th>Shift</th>
                         <th>Transaction</th>
                         <th>Sales</th>
                         <th>Status</th>
@@ -233,12 +232,6 @@
                     <tr>
 
                         <td>Fervian</td>
-
-                        <td>
-
-                            Morning
-
-                        </td>
 
                         <td>
 
@@ -273,3 +266,22 @@
     </div>
 
 </div>
+<script>
+    let transaction = []
+
+    async function fetchTransaction(){
+        try{
+            const response = await fetch('<?= route('data.cashier.daily.transaction')?>')
+            const result = await response.json()
+            transaction = result
+            console.log(result)
+        } catch(error){
+            console.error('Error fetching transaction:' , error)
+        }
+    }
+    fetchTransaction()
+
+    document.getElementById('printBtn').addEventListener('click', function(){
+        window.print()
+    })
+</script>

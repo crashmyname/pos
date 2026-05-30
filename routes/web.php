@@ -21,6 +21,8 @@ Route::post('/admin',[AuthController::class,'loginAdmin'])->name('login.admin');
 
 Route::group([AuthMiddleware::class], function(){
     Route::get('/',[CashierController::class,'index'])->name('view.cashier');
+    Route::get('/product',[CashierController::class,'getProduct'])->name('data.cashier.product');
+    Route::get('/daily/transaction',[CashierController::class,'getDailyTransaction'])->name('data.cashier.daily.transaction');
     Route::get('/report',[ReportController::class,'report'])->name('view.report');
 });
 // Route::get('/chart/label',[ChartController::class,'indexlabel']);

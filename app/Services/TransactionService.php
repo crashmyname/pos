@@ -23,6 +23,14 @@ class TransactionService
             return 'INV' . $currentDate . $newSequence;
         }
     }
+
+    public function dailyTransaction()
+    {
+        $today = Date::parse(Date::Now())->format('Y-m-d');
+        return Transaction::query()
+            ->whereDate('created_at', $today)
+            ->get();
+    }
     public function createTransaction(array $data)
     {
         DB::beginTransaction();
