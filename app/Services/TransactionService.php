@@ -3,6 +3,7 @@
 namespace App\Services;
 use App\Models\Cashback;
 use App\Models\DetailTransaction;
+use App\Models\SetupTransaction;
 use App\Models\Transaction;
 use Bpjs\Framework\Helpers\Date;
 use Bpjs\Framework\Helpers\DB;
@@ -43,6 +44,18 @@ class TransactionService
 
     public function createTransaction(array $data)
     {
+        $date = Date::parse(Date::Now())->format('Y-m-d');
+        $setup = SetupTransaction::query()
+                                ->whereDate('closing_date',$date)
+                                ->where('status','=',1)
+                                ->first();
+        if($setup){
+            return [
+                'status' => false,
+                'statusCode' => 500,
+                'message' => 'Transaksi sudah di closing'
+            ];
+        }
         DB::beginTransaction();
         try{
             $invoiceNumber = $this->invoiceNumber();
@@ -53,6 +66,7 @@ class TransactionService
             }
             
             $transaction = Transaction::create([
+                'user_id' => auth()->user()->id,
                 'invoice_number' => $this->invoiceNumber(),
                 'transaction_date' => Date::Now(),
                 'total_item' => count($data['items']),

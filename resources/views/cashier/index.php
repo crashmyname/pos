@@ -2527,16 +2527,16 @@ document.getElementById('btn-complete-payment')
     
     // Data Tansaction
     const transactionData = {
-        total_item: cart.length,                    // Jumlah item
-        sub_total: subtotal,                        // Subtotal
-        total: total,                               // Grand total
-        paid_amount: pay,                           // Jumlah bayar
-        payment_method: selectedPayment,            // Metode pembayaran
-        notes: '',                                  // Catatan (opsional)
+        total_item: cart.length,
+        sub_total: subtotal,
+        total: total,
+        paid_amount: pay,
+        payment_method: selectedPayment,
+        notes: '',
         member: selectedMember ? selectedMember.code : null,
         items: cart.map(item => ({
             product_id: item.id,
-            quantity: item.qty,                     // <-- PAKAI 'quantity' bukan 'qty'
+            quantity: item.qty,
             price: item.price,
         })),
     };

@@ -9,6 +9,7 @@ class CreateTransactionsTable
     {
         $table = new SchemaBuilder('transactions');
         $table->id();
+        $table->bigInteger('user_id');
         $table->string('invoice_number',50);
         $table->dateTime('transaction_date');
         $table->integer('total_item');

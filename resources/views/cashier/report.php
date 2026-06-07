@@ -18,12 +18,22 @@
             </div>
 
         </div>
-
-        <button class="btn btn-primary" id="printBtn">
-
-            PRINT REPORT
-
-        </button>
+        <div class="row">
+            <div class="col-md-6">
+                <button class="btn btn-primary" id="printBtn">
+        
+                    PRINT REPORT
+        
+                </button>
+            </div>
+            <div class="col-md-6">
+                <button class="btn btn-danger" id="closingBtn">
+        
+                    CLOSING TRANSACTION
+        
+                </button>
+            </div>
+        </div>
 
     </div>
 
