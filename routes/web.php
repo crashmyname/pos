@@ -6,6 +6,7 @@ use App\Controllers\CategoriesController;
 use App\Controllers\ChartController;
 use App\Controllers\HomeController;
 use App\Controllers\ProductController;
+use App\Controllers\QrisController;
 use App\Controllers\ReportController;
 use App\Controllers\TransactionController;
 use App\Controllers\SupplierController;
@@ -26,6 +27,7 @@ Route::group([AuthMiddleware::class], function(){
     Route::get('/daily/transaction',[CashierController::class,'getDailyTransaction'])->name('data.cashier.daily.transaction');
     Route::get('/report',[ReportController::class,'report'])->name('view.report');
     Route::post('/transaction',[TransactionController::class, 'create'])->name('create.transaction');
+    Route::post('/qris-generator',[QrisController::class,'generate'])->name('qris.generator');
 });
 // Route::get('/chart/label',[ChartController::class,'indexlabel']);
 

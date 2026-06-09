@@ -53,7 +53,7 @@ class TransactionService
             return [
                 'status' => false,
                 'statusCode' => 500,
-                'message' => 'Transaksi sudah di closing'
+                'message' => 'Transaksi hari ini sudah di closing'
             ];
         }
         DB::beginTransaction();
@@ -64,18 +64,18 @@ class TransactionService
             if (empty($invoiceNumber)) {
                 throw new \Exception('Gagal generate invoice number');
             }
-            
+
             $transaction = Transaction::create([
                 'user_id' => auth()->user()->id,
-                'invoice_number' => $this->invoiceNumber(),
+                'invoice_number' => $invoiceNumber,
                 'transaction_date' => Date::Now(),
                 'total_item' => count($data['items']),
-                'sub_total' => $data['sub_total'],
+                'sub_total' => $data['sub_total'] ?? 0,
                 'cashback_earn' => $data['total'] * 0.02,
-                'grand_total' => $data['total'],
-                'paid_amount' => $data['paid_amount'],
+                'grand_total' => $data['total'] ?? 0,
+                'paid_amount' => $data['paid_amount'] ?? 0,
                 'change_amount' => $data['change'] ?? 0,
-                'payment_method' => $data['payment_method'],
+                'payment_method' => $data['payment_method'] ?? 'tunai',
                 'notes' => $data['notes'] ?? null
             ]);
             if($transaction){

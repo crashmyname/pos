@@ -404,8 +404,8 @@
 
                     <div class="text-center">
 
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=DEMO-QRIS"
-                             class="img-fluid rounded border">
+                        <img src="" id="qrisdinamis"
+                             class="img-fluid rounded border" width="200px">
 
                         <div class="mt-3 text-secondary">
                             Scan QRIS to pay
@@ -1590,10 +1590,48 @@ document.getElementById('btn-payment')
         new bootstrap.Modal(
             document.getElementById('paymentModal')
         );
-
     modal.show();
-
+    generateQRIS(total);
 });
+
+async function generateQRIS(amount) {
+    try {
+        document.getElementById('qrisdinamis').src = '';
+        Swal.fire({
+            title: 'Generating QR...',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        const response = await fetch('<?= route('qris.generator')?>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '<?= csrfHeader()?>'
+            },
+            body: JSON.stringify({
+                amount: amount,
+                invoice_id: 'INV-' + Date.now()
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById('qrisdinamis').src = data.qris_image;
+            
+            Swal.close();
+        } else {
+            Swal.fire('Error', 'Gagal generate QRIS', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error:', error);
+        Swal.fire('Error', 'Gagal menghubungi server', 'error');
+    }
+}
 
 function calculateTotal(){
 
@@ -2498,7 +2536,7 @@ function newTransaction(){
 }
 
 // Event listener pembayaran
-const PRINT_SERVER = 'http://10.173.168.167:3000';
+const PRINT_SERVER = 'http://localhost:3000';
 const API_URL = '<?= route('create.transaction')?>';
 const AUTH_SESSION = '<?= auth()->user()->name?>'
 document.getElementById('btn-complete-payment')
@@ -2507,8 +2545,6 @@ document.getElementById('btn-complete-payment')
     const btn = this;
     btn.disabled = true;
     btn.textContent = 'Processing...';
-    
-    // const invoice = 'INV-' + Date.now();
     
     const subtotal = calculateTotal();
     let total = subtotal;
@@ -2520,12 +2556,12 @@ document.getElementById('btn-complete-payment')
         pay = parseInt(document.getElementById('cash-amount').value || 0);
         change = pay - total;
     } else if (selectedPayment === 'qris') {
-        charge = Math.round(total * 0.007);
+        charge = total;
         pay = total + charge;
         total = total + charge;
     }
     
-    // Data Tansaction
+    // Data Transaction
     const transactionData = {
         total_item: cart.length,
         sub_total: subtotal,
@@ -2533,7 +2569,7 @@ document.getElementById('btn-complete-payment')
         paid_amount: pay,
         payment_method: selectedPayment,
         notes: '',
-        member: selectedMember ? selectedMember.code : null,
+        member: selectedMember ? selectedMember.code : '',
         items: cart.map(item => ({
             product_id: item.id,
             quantity: item.qty,
@@ -2541,12 +2577,14 @@ document.getElementById('btn-complete-payment')
         })),
     };
 
-    try{
+    try {
+        // 1. SIMPAN TRANSAKSI DULU (WAJIB)
         const dbResponse = await fetch(API_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN' : '<?= csrfHeader()?>'
-             },
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '<?= csrfHeader()?>'
+            },
             body: JSON.stringify(transactionData)
         });
         
@@ -2582,46 +2620,115 @@ document.getElementById('btn-complete-payment')
                 cashback: selectedMember.cashback
             } : null
         };
-        fetch(`${PRINT_SERVER}/print`, {
+        
+        // 2. CLEANUP UI (RESET CART, TUTUP MODAL, DLL)
+        cart = [];
+        renderCart();
+        
+        const modal = bootstrap.Modal.getInstance(
+            document.getElementById('paymentModal')
+        );
+        modal.hide();
+
+        transactions.unshift(receiptData);
+        renderTransactions();
+        
+        // 3. PRINT OPSIONAL (TIDAK WAJIB)
+        // Cetak struk tanpa blocking, jika gagal tidak masalah
+        printReceipt(receiptData);
+        
+        // Tampilkan pesan sukses
+        alert('Pembayaran berhasil! Transaksi tersimpan.');
+        
+    } catch(error) {
+        console.error('Transaction error:', error);
+        alert('Gagal menyimpan transaksi: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'COMPLETE PAYMENT';
+    }
+});
+
+// Fungsi terpisah untuk print (opsional)
+async function printReceipt(receiptData) {
+    try {
+        // Coba ping printer service dulu (timeout 3 detik)
+        const pingController = new AbortController();
+        const pingTimeout = setTimeout(() => pingController.abort(), 3000);
+        
+        const pingResponse = await fetch(`${PRINT_SERVER}/health`, {
+            method: 'GET',
+            signal: pingController.signal
+        }).catch(() => null);
+        
+        clearTimeout(pingTimeout);
+        
+        // Jika printer service tidak available, skip print
+        if (!pingResponse || !pingResponse.ok) {
+            console.warn('Printer service tidak tersedia, skip print');
+            return;
+        }
+        
+        // Kirim print request dengan timeout
+        const printController = new AbortController();
+        const printTimeout = setTimeout(() => printController.abort(), 5000);
+        
+        const response = await fetch(`${PRINT_SERVER}/print`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ receipt: receiptData })
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                alert('Pembayaran berhasil! Struk dicetak.');
-                
-                cart = [];
-                renderCart();
-                
-                const modal = bootstrap.Modal.getInstance(
-                    document.getElementById('paymentModal')
-                );
-                modal.hide();
-
-                transactions.unshift(receiptData);
-                renderTransactions();
-                
-            } else {
-                alert('Print gagal: ' + result.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Gagal konek ke printer service');
-        })
-        .finally(() => {
-            btn.disabled = false;
-            btn.textContent = 'COMPLETE PAYMENT';
+            body: JSON.stringify({ receipt: receiptData }),
+            signal: printController.signal
         });
-    } catch(error){
-        console.error(error)
+        
+        clearTimeout(printTimeout);
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            console.log('Struk berhasil dicetak');
+            // Optional: tampilkan notifikasi sukses print
+            showNotification('Struk dicetak', 'success');
+        } else {
+            console.warn('Print gagal:', result.message);
+            showNotification('Struk gagal dicetak, tapi transaksi tersimpan', 'warning');
+        }
+        
+    } catch(error) {
+        if (error.name === 'AbortError') {
+            console.warn('Print timeout - printer service lambat');
+        } else {
+            console.warn('Print error (non-blocking):', error.message);
+        }
+        // Tampilkan notifikasi ringan
+        showNotification('Struk tidak tercetak, silakan cetak manual nanti', 'info');
     }
+}
+
+// Fungsi notifikasi sederhana (opsional)
+function showNotification(message, type = 'info') {
+    // Bisa pakai toast atau alert, tapi lebih baik toast
+    const toast = document.createElement('div');
+    toast.className = `toast-notification toast-${type}`;
+    toast.textContent = message;
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: ${type === 'success' ? '#4CAF50' : type === 'warning' ? '#ff9800' : '#2196F3'};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 4px;
+        z-index: 9999;
+        animation: slideIn 0.3s ease;
+    `;
+    document.body.appendChild(toast);
     
-});
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
 
 // function generateReceiptUI(data) {
 //     // Hide POS
