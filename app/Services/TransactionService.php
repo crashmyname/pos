@@ -124,4 +124,19 @@ class TransactionService
             ];
         }
     }
+
+    public function setupTransaction(array $data)
+    {
+        $date = Date::Now();
+        $setup = SetupTransaction::create([
+            'closing_date' => $date,
+            'status' => 1,
+        ]);
+        return [
+            'success' => true,
+            'statusCode' => 201,
+            'message' => 'Closing Transaksi sukses',
+            'data' => $setup->closing_date
+        ];
+    }
 }

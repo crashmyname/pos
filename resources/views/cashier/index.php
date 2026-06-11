@@ -1112,8 +1112,9 @@ body{
 }
 
 </style>
-
+<script src="<?= asset_v('js/custom-alert.js')?>"></script>
 <script>
+const Alert = new CustomAlert();
 const members = [
 
     {
@@ -1422,7 +1423,7 @@ document.getElementById('scan-product')
 
     }else{
 
-        alert('Produk tidak ditemukan');
+        Alert.warning('Produk tidak ditemukan');
 
     }
 
@@ -1741,7 +1742,7 @@ function saveHoldBill(){
 
     if(cart.length === 0){
 
-        alert('Cart is empty');
+        Alert.warning('Cart is empty');
         return;
 
     }
@@ -1777,7 +1778,7 @@ function saveHoldBill(){
 
     document.getElementById('hold-name').value = '';
 
-    alert('Transaction saved to hold');
+    Alert.success('Transaction saved to hold');
 
 }
 
@@ -2226,7 +2227,7 @@ function processReturn(){
     // VALIDATION
     if(returnedItems.length === 0){
 
-        alert('No item selected');
+        Alert.warning('No item selected');
         return;
 
     }
@@ -2254,7 +2255,7 @@ function processReturn(){
 
     renderTransactions();
 
-    alert(
+    Alert.success(
 
         'Return Success\n' +
         'Total Return : Rp ' +
@@ -2498,7 +2499,7 @@ function detailTransaction(index){
 
     });
 
-    alert(
+    Alert.success(
 
         'Invoice : ' + trx.invoice +
         '\nPayment : ' + trx.payment.toUpperCase() +
@@ -2512,7 +2513,7 @@ function reprintTransaction(index){
 
     let trx = transactions[index];
 
-    alert(
+    Alert.success(
 
         'Reprint Receipt\n' +
         trx.invoice
@@ -2556,9 +2557,8 @@ document.getElementById('btn-complete-payment')
         pay = parseInt(document.getElementById('cash-amount').value || 0);
         change = pay - total;
     } else if (selectedPayment === 'qris') {
-        charge = total;
-        pay = total + charge;
-        total = total + charge;
+        pay = parseInt(document.getElementById('cash-amount').value || 0);
+        total = total;
     }
     
     // Data Transaction
@@ -2568,6 +2568,7 @@ document.getElementById('btn-complete-payment')
         total: total,
         paid_amount: pay,
         payment_method: selectedPayment,
+        change: change,
         notes: '',
         member: selectedMember ? selectedMember.code : '',
         items: cart.map(item => ({
@@ -2578,7 +2579,6 @@ document.getElementById('btn-complete-payment')
     };
 
     try {
-        // 1. SIMPAN TRANSAKSI DULU (WAJIB)
         const dbResponse = await fetch(API_URL, {
             method: 'POST',
             headers: { 
@@ -2594,7 +2594,6 @@ document.getElementById('btn-complete-payment')
             throw new Error(dbResult.message);
         }
         
-        // Dapat invoice dari database
         const invoiceNumber = dbResult.data.invoice;
         const transactionDate = dbResult.data.date;
 
@@ -2621,7 +2620,6 @@ document.getElementById('btn-complete-payment')
             } : null
         };
         
-        // 2. CLEANUP UI (RESET CART, TUTUP MODAL, DLL)
         cart = [];
         renderCart();
         
@@ -2638,11 +2636,11 @@ document.getElementById('btn-complete-payment')
         printReceipt(receiptData);
         
         // Tampilkan pesan sukses
-        alert('Pembayaran berhasil! Transaksi tersimpan.');
+        Alert.success('Pembayaran berhasil! Transaksi tersimpan.','success',3000);
         
     } catch(error) {
         console.error('Transaction error:', error);
-        alert('Gagal menyimpan transaksi: ' + error.message);
+        Alert.error('Gagal menyimpan transaksi: ' + error.message);
     } finally {
         btn.disabled = false;
         btn.textContent = 'COMPLETE PAYMENT';

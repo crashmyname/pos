@@ -13,4 +13,9 @@ class Transaction extends BaseModel
     {
         return $this->hasMany(DetailTransaction::class,'transaction_id', 'id');
     }
+
+    public function users()
+    {
+        return $this->hasMany(User::class, 'id','user_id');
+    }
 }

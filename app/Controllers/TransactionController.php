@@ -23,4 +23,10 @@ class TransactionController extends BaseController
         $transaction = $this->transactionService->createTransaction($request->all());
         return $this->json($transaction,$transaction['statusCode']);
     }
+
+    public function setupTransaction(Request $request)
+    {
+        $setup = $this->transactionService->setupTransaction($request->all());
+        return $this->json($setup,$setup['statusCode']);
+    }
 }
