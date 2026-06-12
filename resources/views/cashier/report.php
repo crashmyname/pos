@@ -155,9 +155,17 @@
     <!-- TRANSACTION RECORDS -->
     <div class="card border-0 shadow-sm mt-4">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h3 class="card-title">
-                Transaction Records
-            </h3>
+            <div class="d-flex align-items-center gap-2">
+                <!-- Toggle Button -->
+                <button class="btn btn-sm btn-outline-secondary border-0" id="toggleTransactionBtn" type="button">
+                    <svg id="toggleIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                </button>
+                <h3 class="card-title mb-0">
+                    Transaction Records
+                </h3>
+            </div>
             <div class="d-flex align-items-center gap-2">
                 <small class="text-secondary" id="recordDate"></small>
                 <!-- Download PDF Button -->
@@ -182,45 +190,77 @@
                 </button>
             </div>
         </div>
-        <div class="table-responsive">
-            <table class="table table-vcenter table-hover">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Invoice</th>
-                        <th>Time</th>
-                        <th>Payment Method</th>
-                        <th>Total</th>
-                    </tr>
-                </thead>
-                <tbody id="transactionRecordsBody">
-                    <tr>
-                        <td colspan="5" class="text-center">
-                            <div class="spinner-border spinner-border-sm text-secondary"></div>
-                            Loading records...
-                        </td>
-                    </tr>
-                </tbody>
-                <tfoot class="table-light" id="transactionRecordsFoot" style="display: none;">
-                    <!-- Footer akan diisi dinamis -->
-                </tfoot>
-            </table>
-        </div>
         
-        <!-- Pagination -->
-        <div class="card-footer d-flex justify-content-between align-items-center" id="paginationContainer" style="display: none;">
-            <div class="text-secondary" id="paginationInfo">
-                Showing 0 to 0 of 0 entries
+        <!-- Wrapper untuk konten yang bisa di-collapse -->
+        <div id="transactionContent">
+            <div class="table-responsive">
+                <table class="table table-vcenter table-hover">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Invoice</th>
+                            <th>Time</th>
+                            <th>Payment Method</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionRecordsBody">
+                        <tr>
+                            <td colspan="5" class="text-center">
+                                <div class="spinner-border spinner-border-sm text-secondary"></div>
+                                Loading records...
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot class="table-light" id="transactionRecordsFoot" style="display: none;">
+                        <!-- Footer akan diisi dinamis -->
+                    </tfoot>
+                </table>
             </div>
-            <nav>
-                <ul class="pagination pagination-sm mb-0" id="paginationNav">
-                    <!-- Pagination buttons akan diisi dinamis -->
-                </ul>
-            </nav>
+            
+            <!-- Pagination -->
+            <div class="card-footer d-flex justify-content-between align-items-center" id="paginationContainer" style="display: none;">
+                <div class="text-secondary" id="paginationInfo">
+                    Showing 0 to 0 of 0 entries
+                </div>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0" id="paginationNav">
+                        <!-- Pagination buttons akan diisi dinamis -->
+                    </ul>
+                </nav>
+            </div>
         </div>
     </div>
 
 </div>
+<style>
+#transactionContent {
+    transition: all 0.3s ease-in-out;
+}
+
+/* Styling untuk tombol toggle */
+#toggleTransactionBtn {
+    padding: 4px;
+    line-height: 1;
+    transition: all 0.2s ease;
+}
+
+#toggleTransactionBtn:hover {
+    background-color: rgba(0,0,0,0.05);
+}
+
+/* Rotasi icon dengan smooth */
+#toggleIcon {
+    transition: transform 0.3s ease;
+}
+
+/* Optional: Animasi collapse seperti Bootstrap */
+.collapsing {
+    height: 0;
+    overflow: hidden;
+    transition: height 0.35s ease;
+}
+</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="<?= asset_v('js/custom-alert.js')?>"></script>
@@ -782,8 +822,46 @@ document.getElementById('closingBtn').addEventListener('click', async function(e
     }
 });
 
+// Toggle Transaction Records
+let isTransactionCollapsed = false;
+
+document.getElementById('toggleTransactionBtn').addEventListener('click', function() {
+    const content = document.getElementById('transactionContent');
+    const toggleIcon = document.getElementById('toggleIcon');
+    
+    isTransactionCollapsed = !isTransactionCollapsed;
+    
+    if (isTransactionCollapsed) {
+        // Collapse - sembunyikan konten
+        content.style.display = 'none';
+        // Rotasi icon ke kanan (chevron right)
+        toggleIcon.innerHTML = '<polyline points="9 18 15 12 9 6"/>';
+        // Simpan status ke localStorage
+        localStorage.setItem('transactionCollapsed', 'true');
+    } else {
+        // Expand - tampilkan konten
+        content.style.display = 'block';
+        // Rotasi icon ke bawah (chevron down)
+        toggleIcon.innerHTML = '<polyline points="6 9 12 15 18 9"/>';
+        // Simpan status ke localStorage
+        localStorage.setItem('transactionCollapsed', 'false');
+    }
+});
 
 document.addEventListener('DOMContentLoaded', function() {
     fetchReportData();
+    const savedState = localStorage.getItem('transactionCollapsed');
+    const content = document.getElementById('transactionContent');
+    const toggleIcon = document.getElementById('toggleIcon');
+    
+    if (savedState === 'true') {
+        isTransactionCollapsed = true;
+        content.style.display = 'none';
+        toggleIcon.innerHTML = '<polyline points="9 18 15 12 9 6"/>';
+    } else {
+        isTransactionCollapsed = false;
+        content.style.display = 'block';
+        toggleIcon.innerHTML = '<polyline points="6 9 12 15 18 9"/>';
+    }
 });
 </script>

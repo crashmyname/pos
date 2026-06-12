@@ -68,34 +68,32 @@
         <div class="col-lg-6">
             <!-- MEMBER -->
             <div class="card pos-card mb-2">
-
                 <div class="card-body py-2">
-
                     <label class="form-label small fw-bold mb-1">
-                        Member / Phone
+                        Member ID / NIK
                     </label>
-
                     <div class="position-relative">
-
-                        <input type="text"
-                            id="member-input"
-                            class="form-control"
-                            placeholder="Scan member card / phone">
-
+                        <div class="input-group">
+                            <input type="text"
+                                id="member-input"
+                                class="form-control"
+                                placeholder="Scan member card / phone">
+                            <button class="btn btn-outline-success" 
+                                type="button" 
+                                id="btn-search-member"
+                                title="Search Member">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-users"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M5 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /><path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /><path d="M21 21v-2a4 4 0 0 0 -3 -3.85" /></svg>
+                            </button>
+                        </div>
                         <span class="member-status-icon"
                             id="member-status-icon">
                         </span>
-
                     </div>
-
                     <!-- MEMBER INFO -->
                     <div id="member-box"
                         class="member-mini d-none mt-2">
-
                     </div>
-
                 </div>
-
             </div>
 
             <div class="card pos-card cart-card">
@@ -1115,169 +1113,197 @@ body{
 <script src="<?= asset_v('js/custom-alert.js')?>"></script>
 <script>
 const Alert = new CustomAlert();
-const members = [
-
-    {
-        code:'123456789',
-        name:'Budi Santoso',
-        cashback:25000,
-        limit:1000000,
-        used:650000,
-        status:'active'
-    },
-
-    {
-        code:'998877',
-        name:'Siti Rahma',
-        cashback:12000,
-        limit:1000000,
-        used:150000,
-        status:'inactive'
-    }
-
-];
 
 let selectedMember = null;
+const SECRET_KEY = '<?= env('SECRET_KEY')?>';
 
-document.getElementById('member-input')
-.addEventListener('keyup', function(){
+function format(number) {
+    return new Intl.NumberFormat('id-ID').format(number);
+}
 
-    let value = this.value.trim();
+// Fungsi untuk menampilkan member
+function displayMember(member) {
+    let memberBox = document.getElementById('member-box');
+    let icon = document.getElementById('member-status-icon');
+    icon.innerHTML = '';
 
-    let member =
-        members.find(m => m.code === value);
-
-    let memberBox =
-        document.getElementById('member-box');
-
-    let icon =
-        document.getElementById('member-status-icon');
-
-    // EMPTY
-    if(value === ''){
-
+    if (!member) {
         selectedMember = null;
-
-        memberBox.classList.add('d-none');
-
-        icon.innerHTML = '';
-
-        return;
-
-    }
-
-    // MEMBER FOUND
-    if(member){
-
-        // MEMBER NON ACTIVE
-        if(member.status !== 'active'){
-
-            selectedMember = null;
-
-            icon.innerHTML = '';
-
-            memberBox.classList.remove('d-none');
-
-            memberBox.innerHTML = `
-
-                <div class="text-danger fw-bold">
-                    Member Non Active
-                </div>
-
-                <div class="small text-secondary">
-                    Membership already inactive
-                </div>
-
-            `;
-
-            return;
-
-        }
-
-        // ACTIVE MEMBER
-        selectedMember = member;
-
-        let remaining =
-            member.limit - member.used;
-
-        icon.innerHTML = '';
-
         memberBox.classList.remove('d-none');
-
         memberBox.innerHTML = `
-
-            <div class="d-flex justify-content-between">
-
-                <div>
-
-                    <div class="fw-bold text-success">
-                        ${member.name}
-                    </div>
-
-                    <div class="small text-secondary">
-                        Cashback :
-                        Rp ${format(member.cashback)}
-                    </div>
-
-                </div>
-
-                <div class="text-end">
-
-                    <div class="small text-secondary">
-                        Credit Limit
-                    </div>
-
-                    <div class="fw-bold">
-                        Rp ${format(remaining)}
-                    </div>
-
-                </div>
-
-            </div>
-
-        `;
-
-    }
-
-    // MEMBER NOT FOUND
-    else{
-
-        selectedMember = null;
-
-        icon.innerHTML = '';
-
-        memberBox.classList.remove('d-none');
-
-        memberBox.innerHTML = `
-
             <div class="text-danger fw-bold">
                 Member Not Found
             </div>
-
             <div class="small text-secondary">
                 Invalid member card or phone number
             </div>
-
         `;
-
+        return;
     }
 
+    // MEMBER NON ACTIVE
+    if (member.status !== 'active') {
+        selectedMember = null;
+        memberBox.classList.remove('d-none');
+        memberBox.innerHTML = `
+            <div class="text-danger fw-bold">
+                Member Non Active
+            </div>
+            <div class="small text-secondary">
+                Membership already inactive
+            </div>
+        `;
+        return;
+    }
+
+    // ACTIVE MEMBER
+    selectedMember = member;
+    let remaining = member.limit - member.used;
+    memberBox.classList.remove('d-none');
+    memberBox.innerHTML = `
+        <div class="d-flex justify-content-between">
+            <div>
+                <div class="fw-bold text-success">
+                    ${member.name}
+                </div>
+                <div class="small text-secondary">
+                    Cashback : Rp ${format(member.cashback)}
+                </div>
+            </div>
+            <div class="text-end">
+                <div class="small text-secondary">
+                    Credit Limit
+                </div>
+                <div class="fw-bold">
+                    Rp ${format(remaining)}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Fungsi untuk search member via API
+async function searchMemberAPI(value) {
+    let memberBox = document.getElementById('member-box');
+    let icon = document.getElementById('member-status-icon');
+    
+    // Tampilkan loading
+    icon.innerHTML = '<i class="bi bi-hourglass-split spinner"></i>';
+    memberBox.classList.add('d-none');
+    
+    try {
+        const response = await fetch('https://koperasi-stanley.com/api/v1/member', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                member: value,
+                key: SECRET_KEY
+            })
+        });
+
+        const result = await response.json();
+        icon.innerHTML = '';
+
+        if (response.status === 401) {
+            // Unauthorized
+            memberBox.classList.remove('d-none');
+            memberBox.innerHTML = `
+                <div class="text-danger fw-bold">
+                    Unauthorized
+                </div>
+                <div class="small text-secondary">
+                    ${result.message}
+                </div>
+            `;
+            return;
+        }
+
+        if (result.status === 200 && result.data) {
+            // Mapping response API ke format member
+            // Sesuaikan dengan struktur data dari API Anda
+            const member = {
+                code: result.data.username || result.data.uuid,
+                name: result.data.name,
+                cashback: result.data.cashback || 0,
+                limit: result.data.limit || 0,
+                used: result.data.used || 0,
+                status: result.data.status || 'active'
+            };
+            displayMember(member);
+        } else {
+            // Data not found
+            displayMember(null);
+        }
+    } catch (error) {
+        console.error('Error searching member:', error);
+        icon.innerHTML = '<i class="bi bi-exclamation-triangle text-warning"></i>';
+        memberBox.classList.remove('d-none');
+        memberBox.innerHTML = `
+            <div class="text-warning fw-bold">
+                Connection Error
+            </div>
+            <div class="small text-secondary">
+                Failed to connect to server
+            </div>
+        `;
+    }
+}
+
+// Event listener untuk tombol search
+document.getElementById('btn-search-member').addEventListener('click', function() {
+    let value = document.getElementById('member-input').value.trim();
+    
+    if (value === '') {
+        selectedMember = null;
+        document.getElementById('member-box').classList.remove('d-none');
+        document.getElementById('member-box').innerHTML = `
+            <div class="text-warning fw-bold">
+                Empty Input
+            </div>
+            <div class="small text-secondary">
+                Please enter member code or phone number
+            </div>
+        `;
+        document.getElementById('member-status-icon').innerHTML = '';
+        return;
+    }
+    
+    searchMemberAPI(value);
 });
 
-// const products = [
+// Event listener untuk Enter key
+document.getElementById('member-input').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        let value = this.value.trim();
+        if (value !== '') {
+            searchMemberAPI(value);
+        } else {
+            selectedMember = null;
+            document.getElementById('member-box').classList.remove('d-none');
+            document.getElementById('member-box').innerHTML = `
+                <div class="text-warning fw-bold">
+                    Empty Input
+                </div>
+                <div class="small text-secondary">
+                    Please enter member code or phone number
+                </div>
+            `;
+            document.getElementById('member-status-icon').innerHTML = '';
+        }
+    }
+});
 
-//     {id:1, barcode:'899001', name:'Coca Cola', price:5000},
-//     {id:2, barcode:'899002', name:'Sprite', price:7000},
-//     {id:3, barcode:'899003', name:'Fanta', price:6000},
-//     {id:4, barcode:'899004', name:'Le Minerale', price:4000},
-//     {id:5, barcode:'899005', name:'Indomie Goreng', price:3500},
-//     {id:6, barcode:'899006', name:'Chitato', price:10000},
-//     {id:7, barcode:'899007', name:'Ultra Milk', price:8000},
-//     {id:8, barcode:'899008', name:'Teh Botol', price:5000},
-//     {id:9, barcode:'899009', name:'Good Day', price:7000},
-//     {id:10, barcode:'899010', name:'Pocari Sweat', price:9000}
-
-// ];
+// Event listener untuk clear input
+document.getElementById('member-input').addEventListener('input', function() {
+    if (this.value.trim() === '') {
+        selectedMember = null;
+        document.getElementById('member-box').classList.add('d-none');
+        document.getElementById('member-status-icon').innerHTML = '';
+    }
+});
 
 let products = []
 let cart = [];
