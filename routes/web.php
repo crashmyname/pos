@@ -5,6 +5,7 @@ use App\Controllers\CashierController;
 use App\Controllers\CategoriesController;
 use App\Controllers\ChartController;
 use App\Controllers\HomeController;
+use App\Controllers\LabelController;
 use App\Controllers\ProductController;
 use App\Controllers\QrisController;
 use App\Controllers\ReportController;
@@ -64,6 +65,15 @@ Route::group([AuthMiddleware::class], function(){
     Route::put('/admin/supplier/{id}',[SupplierController::class,'update'])->name('update.admin.supplier');
     Route::delete('/admin/supplier/{id}',[SupplierController::class, 'destroy'])->name('delete.admin.supplier');
     Route::post('/admin/supplier/import',[SupplierController::class,'import'])->name('import.admin.supplier');
+
+    // LABELS
+    Route::get('/labels',[LabelController::class,'index'])->name('label.index');
+    Route::post('/labels/print-selected',[LabelController::class,'printSelected'])->name('print.selected');
+    Route::get('/labels/print-all',[LabelController::class,'printAll'])->name('print.all');
+    Route::get('/labels/print-category/{category}',[LabelController::class,'printByCategory'])->name('print.bycategory');
+    Route::post('/labels/print-custom',[LabelController::class,'printCustomQuantity'])->name('print.custom');
+    Route::get('/labels/print-single/{id}',[LabelController::class,'printSingle'])->name('print.single');
+    Route::post('/labels/preview',[LabelController::class,'preview'])->name('preview.label');
 });
 
 // LOGOUT

@@ -2730,6 +2730,46 @@ async function printReceipt(receiptData) {
     }
 }
 
+// Fungsi print dengan retry
+async function printReceiptWithRetry(receiptData, maxRetries = 2) {
+    for (let i = 0; i <= maxRetries; i++) {
+        try {
+            // Cek kesehatan printer
+            const healthCheck = await fetch(`${PRINT_SERVER}/health`, {
+                signal: AbortSignal.timeout(3000)
+            }).catch(() => null);
+            
+            if (!healthCheck || !healthCheck.ok) {
+                if (i === maxRetries) throw new Error('Printer service unavailable');
+                await new Promise(r => setTimeout(r, 1000));
+                continue;
+            }
+            
+            // Kirim print
+            const response = await fetch(`${PRINT_SERVER}/print`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ receipt: receiptData }),
+                signal: AbortSignal.timeout(5000)
+            });
+            
+            if (response.ok) {
+                console.log('Print success');
+                showNotification('Struk berhasil dicetak', 'success');
+                return;
+            }
+            
+            throw new Error('Print failed');
+            
+        } catch (error) {
+            console.warn(`Print attempt ${i + 1} failed:`, error.message);
+            if (i === maxRetries) {
+                showNotification('Struk tidak tercetak, simpan struk untuk dicetak ulang', 'warning');
+            }
+        }
+    }
+}
+
 // Fungsi notifikasi sederhana (opsional)
 function showNotification(message, type = 'info') {
     // Bisa pakai toast atau alert, tapi lebih baik toast
