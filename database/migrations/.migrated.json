@@ -1,11 +1,11 @@
 {
-    "33": "2025_06_30_131244_create_user_table.php",
-    "34": "2026_04_23_093908_create_jobs_table.php",
-    "35": "2026_05_16_142843_create_supplier_table.php",
-    "36": "2026_05_16_144851_create_transactions_table.php",
-    "37": "2026_05_16_144902_create_transaction_details_table.php",
-    "38": "2026_05_16_144929_create_products_table.php",
-    "39": "2026_05_16_144950_create_categories_table.php",
-    "40": "2026_05_16_145244_create_cashback_histories_table.php",
-    "41": "2026_06_01_144012_create_setup_transaction_table.php"
+    "42": "2025_06_30_131244_create_user_table.php",
+    "43": "2026_04_23_093908_create_jobs_table.php",
+    "44": "2026_05_16_142843_create_supplier_table.php",
+    "45": "2026_05_16_144851_create_transactions_table.php",
+    "46": "2026_05_16_144902_create_transaction_details_table.php",
+    "47": "2026_05_16_144929_create_products_table.php",
+    "48": "2026_05_16_144950_create_categories_table.php",
+    "49": "2026_05_16_145244_create_cashback_histories_table.php",
+    "50": "2026_06_01_144012_create_setup_transaction_table.php"
 }

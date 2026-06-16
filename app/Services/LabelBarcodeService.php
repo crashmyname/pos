@@ -19,11 +19,11 @@ class LabelBarcodeService
             'labels_per_page' => 21,
             'label_width_mm' => 60,
             'label_height_mm' => 40,
-            'margin_top_mm' => 8.5,
-            'margin_left_mm' => 5,
-            'margin_right_mm' => 5,
-            'gap_horizontal_mm' => 2,
-            'gap_vertical_mm' => 2,
+            'margin_top_mm' => 3,
+            'margin_left_mm' => 4,
+            'margin_right_mm' => 4,
+            'gap_horizontal_mm' => 1.5,
+            'gap_vertical_mm' => 1,
             'barcode_height' => 30,
             'barcode_width' => 2,
         ];
@@ -149,12 +149,14 @@ class LabelBarcodeService
             background: white;
         }
         
-        /* ============ LABEL ============ */
+        /* ==========================================
+           LABEL STYLE
+           ========================================== */
         .label {
             width: {$w}mm;
             height: {$h}mm;
             border: 1px solid #ddd;
-            padding: 1.5mm;
+            padding: 0.8mm 1mm;
             background: white;
             position: relative;
             overflow: hidden;
@@ -162,90 +164,131 @@ class LabelBarcodeService
             flex-direction: column;
         }
         
-        /* HEADER: Logo + Nama */
-        .label-top {
+        /* ---------- BARIS 1: Logo + STANLEY MART ---------- */
+        .label-brand {
             display: flex;
             align-items: center;
-            gap: 1mm;
+            gap: 0.8mm;
+            padding-bottom: 0.5mm;
+            border-bottom: 0.5px solid #eee;
             margin-bottom: 0.5mm;
         }
         
         .label-logo {
-            width: 5mm;
-            height: 5mm;
+            width: 4mm;
+            height: 4mm;
             object-fit: contain;
             flex-shrink: 0;
         }
         
+        .label-brand-name {
+            font-size: 5.5pt;
+            font-weight: bold;
+            color: #333;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        
+        /* ---------- BARIS 2: Nama Produk (besar) + Company (kanan) ---------- */
+        .label-product-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.8mm;
+            margin-bottom: 0.5mm;
+        }
+        
         .label-name {
-            font-size: 7pt;
+            font-size: 10pt;
             font-weight: bold;
             text-transform: uppercase;
             line-height: 1.2;
             flex: 1;
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
         .label-company {
-            font-size: 5pt;
-            color: #999;
-            position: absolute;
-            top: 0.5mm;
-            right: 1mm;
+            font-size: 5.5pt;
+            color: white;
+            text-align: right;
+            white-space: nowrap;
+            flex-shrink: 0;
+            max-width: 18mm;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
-        /* TENGAH: Barcode */
-        .label-barcode-area {
+        /* ---------- BODY: Barcode (kiri) + Harga (kanan) ---------- */
+        .label-body {
             flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 0.8mm;
+        }
+        
+        /* KOLOM KIRI: Barcode + Digit */
+        .label-barcode-col {
+            width: 28mm;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 0.3mm;
+            gap: 0.2mm;
         }
         
         .label-barcode-img {
             width: 100%;
-            max-width: 52mm;
-            height: auto;
-            max-height: 9mm;
+            max-width: 26mm;
+            height: 11mm;
+            object-fit: contain;
         }
         
         .label-barcode-digit {
-            font-size: 6pt;
+            font-size: 4pt;
             font-weight: bold;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
             color: #333;
+            text-align: center;
+            word-break: break-all;
         }
         
-        /* BAWAH: Harga + Footer */
-        .label-bottom {
-            margin-top: 0.5mm;
+        /* KOLOM KANAN: Harga BESAR */
+        .label-price-col {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
         }
         
         .label-price {
-            text-align: center;
-            font-size: 11pt;
+            font-size: 14pt;
             font-weight: 900;
             color: #d00;
-            line-height: 1.2;
-            margin-bottom: 0.5mm;
+            line-height: 1;
+            white-space: nowrap;
         }
         
+        /* ---------- FOOTER: Tanggal + Kategori ---------- */
         .label-footer {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding-top: 0.3mm;
+            margin-top: 0.3mm;
             border-top: 0.5px solid #eee;
         }
         
         .label-date {
-            font-size: 4.5pt;
-            color: #999;
+            font-size: 3.5pt;
+            color: #bbb;
         }
         
         .label-category {
-            font-size: 4.5pt;
+            font-size: 3.5pt;
             color: #999;
             background: #f5f5f5;
             padding: 0.2mm 1mm;
@@ -261,7 +304,7 @@ class LabelBarcodeService
         
         @media print {
             .label {
-                border: 0.5px solid #ccc;
+                border: 0.3px solid #ccc;
             }
         }
     </style>
@@ -285,49 +328,62 @@ HTML;
         }
 
         // Data
-        $name = strtoupper(substr($product['name'] ?? 'No Name', 0, 30));
-        $barcode = $product['barcode'] ?? $product['code'] ?? '';
+        $name = strtoupper(substr($product['name'] ?? 'No Name', 0, 22));
+        $company = strtoupper(substr($product['company'] ?? '', 0, 18));
+        $barcode = $product['qrcode'] ?? $product['code'] ?? '';
         $price = $product['sell_price'] ?? $product['price'] ?? 0;
         $date = date('d/m/Y');
-        $category = strtoupper(substr($product['category'] ?? '', 0, 15));
-        $company = strtoupper(substr($product['company'] ?? '', 0, 20));
+        $category = strtoupper(substr($product['category'] ?? '', 0, 12));
 
-        // Format harga: "RP. 3.000" satu baris
-        $priceFormatted = 'RP. ' . number_format($price, 0, ',', '.');
+        // Brand toko (bisa di-set dari config atau hardcode)
+        $brandName = 'STANLEY MART';
+
+        // Format harga
+        $priceFormatted = 'Rp ' . number_format($price, 0, ',', '.');
 
         // Escape
         $name = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
-        $barcode = htmlspecialchars($barcode, ENT_QUOTES, 'UTF-8');
-        $category = htmlspecialchars($category, ENT_QUOTES, 'UTF-8');
         $company = htmlspecialchars($company, ENT_QUOTES, 'UTF-8');
+        $barcode = htmlspecialchars($barcode, ENT_QUOTES, 'UTF-8');
         $priceFormatted = htmlspecialchars($priceFormatted, ENT_QUOTES, 'UTF-8');
+        $category = htmlspecialchars($category, ENT_QUOTES, 'UTF-8');
+        $brandName = htmlspecialchars($brandName, ENT_QUOTES, 'UTF-8');
 
-        $categoryBadge = $category ? "<div class='label-category'>{$category}</div>" : '';
+        $categoryBadge = $category ? "<span class='label-category'>{$category}</span>" : '';
         $companyHTML = $company ? "<div class='label-company'>{$company}</div>" : '';
 
         return <<<HTML
         <div class="label">
-            {$companyHTML}
-            
-            <!-- ATAS: Logo + Nama Produk -->
-            <div class="label-top">
+            <!-- BARIS 1: Logo + STANLEY MART -->
+            <div class="label-brand">
                 {$logoHTML}
+                <span class="label-brand-name">{$brandName}</span>
+            </div>
+            
+            <!-- BARIS 2: Nama Produk (besar) + Company (kanan) -->
+            <div class="label-product-row">
                 <div class="label-name">{$name}</div>
+                {$companyHTML}
             </div>
             
-            <!-- TENGAH: Barcode -->
-            <div class="label-barcode-area">
-                <img src="{$barcodeBase64}" class="label-barcode-img" alt="Barcode">
-                <div class="label-barcode-digit">{$barcode}</div>
-            </div>
-            
-            <!-- BAWAH: Harga Besar + Footer -->
-            <div class="label-bottom">
-                <div class="label-price">{$priceFormatted}</div>
-                <div class="label-footer">
-                    <div class="label-date">Cetak: {$date}</div>
-                    {$categoryBadge}
+            <!-- BODY: Barcode (kiri) + Harga (kanan) -->
+            <div class="label-body">
+                <!-- KIRI: Barcode + Digit -->
+                <div class="label-barcode-col">
+                    <img src="{$barcodeBase64}" class="label-barcode-img" alt="Barcode">
+                    <div class="label-barcode-digit">{$barcode}</div>
                 </div>
+                
+                <!-- KANAN: Harga BESAR -->
+                <div class="label-price-col">
+                    <div class="label-price">{$priceFormatted}</div>
+                </div>
+            </div>
+            
+            <!-- FOOTER: Tanggal + Kategori -->
+            <div class="label-footer">
+                <span class="label-date">Cetak: {$date}</span>
+                {$categoryBadge}
             </div>
         </div>
 HTML;

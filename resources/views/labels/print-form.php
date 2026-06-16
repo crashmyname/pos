@@ -639,7 +639,7 @@ unset($_SESSION['error'], $_SESSION['success']);
                                         $barcode = is_array($product) ? ($product['qrcode'] ?? '') : ($product->qrcode ?? '');
                                         $category = is_array($product) ? ($product['category'] ?? '') : ($product->category ?? '');
                                         $company = is_array($product) ? ($product['company'] ?? '') : ($product->company ?? '');
-                                        $price = is_array($product) ? ($product['sell_price'] ?? 0) : ($product->selling_price ?? 0);
+                                        $price = is_array($product) ? ($product['sell_price'] ?? 0) : ($product->sell_price ?? 0);
                                     ?>
                                     <tr>
                                         <td>

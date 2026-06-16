@@ -34,7 +34,7 @@ class LabelController extends BaseController
         if ($request->get('search')) {
             $search = $request->get('search');
             $query->where(function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
+                $q->where('products.name', 'like', "%{$search}%")
                   ->orWhere('qrcode', 'like', "%{$search}%");
                 //   ->orWhere('category', 'like', "%{$search}%");
             });
@@ -47,7 +47,7 @@ class LabelController extends BaseController
         
         // Get products dengan pagination
         $page = $request->get('page', 1);
-        $products = $query->orderBy('name', 'ASC')->paginate(50);
+        $products = $query->orderBy('products.name', 'ASC')->paginate(50);
         
         // Ambil daftar kategori untuk filter
         $categoryModel = new Product();
@@ -86,10 +86,12 @@ class LabelController extends BaseController
         
         // Ambil data produk yang dipilih
         $products = Product::query()
-            ->whereIn('id', $selectedIds)
+            ->whereIn('products.id', $selectedIds)
             ->where('is_active', '=', '1')
-            ->select('id', 'name', 'qrcode', 'sell_price', 'category_id', 'supplier_id')
-            ->orderBy('name', 'ASC')
+            ->select('products.id', 'products.name', 'qrcode', 'sell_price', 'categories.name as category', 'suppliers.name as company')
+            ->leftJoin('suppliers','suppliers.id','=','products.supplier_id')
+            ->leftJoin('categories','categories.id','=','products.category_id')
+            ->orderBy('products.name', 'ASC')
             ->get(\PDO::FETCH_ASSOC);
         
         if (empty($products)) {
@@ -99,7 +101,7 @@ class LabelController extends BaseController
         }
         
         // Path logo - sesuaikan dengan lokasi logo
-        $logoPath = public_path('logo-mart.png');
+        $logoPath = public_path('logo-mart.jpg');
         
         // Generate HTML label
         $html = $this->labelService->generateLabels($products, $logoPath);
@@ -116,8 +118,10 @@ class LabelController extends BaseController
     {
         $products = Product::query()
             ->where('is_active', '=', '1')
-            ->select('id', 'name', 'qrcode', 'sell_price', 'category_id', 'supplier_id')
-            ->orderBy('name', 'ASC')
+            ->select('products.id', 'products.name', 'qrcode', 'sell_price', 'categories.name as category', 'suppliers.name as company')
+            ->leftJoin('suppliers','suppliers.id','=','products.supplier_id')
+            ->leftJoin('categories','categories.id','=','products.category_id')
+            ->orderBy('products.name', 'ASC')
             ->get(\PDO::FETCH_ASSOC);
         
         if (empty($products)) {
@@ -126,7 +130,7 @@ class LabelController extends BaseController
             return;
         }
         
-        $logoPath = public_path('logo-mart.png');
+        $logoPath = public_path('logo-mart.jpg');
         $html = $this->labelService->generateLabels($products, $logoPath);
         
         echo $html;
@@ -141,8 +145,10 @@ class LabelController extends BaseController
         $products = Product::query()
             ->where('is_active', '=', '1')
             // ->where('category', '=', urldecode($category))
-            ->select('id', 'name', 'qrcode', 'sell_price', 'category_id', 'supplier_id')
-            ->orderBy('name', 'ASC')
+            ->select('products.id', 'products.name', 'qrcode', 'sell_price', 'categories.name as category', 'suppliers.name as company')
+            ->leftJoin('suppliers','suppliers.id','=','products.supplier_id')
+            ->leftJoin('categories','categories.id','=','products.category_id')
+            ->orderBy('products.name', 'ASC')
             ->get(\PDO::FETCH_ASSOC);
         
         if (empty($products)) {
@@ -151,7 +157,7 @@ class LabelController extends BaseController
             return;
         }
         
-        $logoPath = public_path('logo-mart.png');
+        $logoPath = public_path('logo-mart.jpg');
         $html = $this->labelService->generateLabels($products, $logoPath);
         
         echo $html;
@@ -170,7 +176,9 @@ class LabelController extends BaseController
             if (empty($item['id']) || empty($item['quantity'])) continue;
             
             $product = Product::query()
-                ->select('id', 'name', 'qrcode', 'sell_price', 'category_id', 'supplier_id')
+                ->select('products.id', 'products.name', 'qrcode', 'sell_price', 'categories.name as category', 'suppliers.name as company')
+                ->leftJoin('suppliers','suppliers.id','=','products.supplier_id')
+                ->leftJoin('categories','categories.id','=','products.category_id')
                 ->where('id', '=', $item['id'])
                 ->first();
             
@@ -193,7 +201,7 @@ class LabelController extends BaseController
             return;
         }
         
-        $logoPath = $logoPath = public_path('logo-mart.png');
+        $logoPath = $logoPath = public_path('logo-mart.jpg');
         $html = $this->labelService->generateLabels($productList, $logoPath);
         
         echo $html;
@@ -216,8 +224,10 @@ class LabelController extends BaseController
         $products = Product::query()
             ->whereIn('id', $selectedIds)
             ->where('is_active', '=', '1')
-            ->select('id', 'name', 'qrcode', 'sell_price', 'category_id', 'supplier_id')
-            ->orderBy('name', 'ASC')
+            ->select('products.id', 'products.name', 'qrcode', 'sell_price', 'categories.name as category', 'suppliers.name as company')
+            ->leftJoin('suppliers','suppliers.id','=','products.supplier_id')
+            ->leftJoin('categories','categories.id','=','products.category_id')
+            ->orderBy('products.name', 'ASC')
             ->get(\PDO::FETCH_ASSOC);
         
         if (empty($products)) {
@@ -226,7 +236,7 @@ class LabelController extends BaseController
             exit;
         }
         
-        $logoPath = public_path('logo-mart.png');
+        $logoPath = public_path('logo-mart.jpg');
         $html = $this->labelService->generateLabels($products, $logoPath);
         
         header('Content-Type: application/json');
@@ -240,8 +250,10 @@ class LabelController extends BaseController
     public function printSingle($id)
     {
         $product = Product::query()
-            ->select('id', 'name', 'qrcode', 'sell_price', 'category_id', 'supplier_id')
-            ->where('id', '=', $id)
+            ->select('products.id', 'products.name', 'qrcode', 'sell_price', 'categories.name as category', 'suppliers.name as company')
+            ->leftJoin('suppliers','suppliers.id','=','products.supplier_id')
+            ->leftJoin('categories','categories.id','=','products.category_id')
+            ->where('products.id', '=', $id)
             ->where('is_active', '=', '1')
             ->first();
         
@@ -256,7 +268,7 @@ class LabelController extends BaseController
             $product = (array) $product;
         }
         
-        $logoPath = public_path('logo-mart.png');
+        $logoPath = public_path('logo-mart.jpg');
         $html = $this->labelService->generateLabels([$product], $logoPath);
         
         echo $html;
