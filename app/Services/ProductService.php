@@ -9,9 +9,12 @@ use Bpjs\Framework\Helpers\Validator;
 class ProductService
 {
     // Service logic here
-    public function getProduct()
+    public function getProduct($perPage,$search = null)
     {
-        return Product::query()->select('id','name','qrcode','sell_price')->paginate(25);
+        return Product::query()
+        ->select('id','name','qrcode','sell_price')
+        ->where('name','LIKE',"%$search%")
+        ->paginate($perPage);
     }
     public function getData($request)
     {
@@ -19,7 +22,7 @@ class ProductService
             return redirect('admin/category');
         }
         return TablePlus::of('products')
-                        ->select('products.name','products.description','products.id','qrcode','buy_price','sell_price','stock_id','image','products.is_active','categories.name as category','suppliers.name as supplier')
+                        ->select('products.name','products.description','products.id','qrcode','buy_price','sell_price','stock_id','image','products.is_active','categories.name as category','suppliers.name as supplier','uom')
                         ->leftJoin('categories','categories.id','=','products.category_id')
                         ->leftJoin('suppliers','suppliers.id','=','products.supplier_id')
                         ->searchable([
@@ -47,6 +50,7 @@ class ProductService
             'description' => $data['description'] ?? null,
             'buy_price' => $data['buy_price'] ?? 0,
             'sell_price' => $data['sell_price'] ?? 0,
+            'uom' => $data['uom'] ?? '-',
             'stock_id' => $data['stock_id'] ?? null,
             'image' => $data['image']['name'] ?? null,
             'is_active' => $data['is_active'] ?? 1,
@@ -87,6 +91,7 @@ class ProductService
             'description' => $data['description'] ?? $product->description,
             'buy_price' => $data['buy_price'] ?? $product->buy_price,
             'sell_price' => $data['sell_price'] ?? $product->sell_price,
+            'uom' => $data['uom'] ?? '-',
             'stock_id' => $data['stock_id'] ?? $product->stock_id,
             'image' => $data['image'] ?? $product->image,
             'is_active' => $data['is_active'] ?? $product->is_active,

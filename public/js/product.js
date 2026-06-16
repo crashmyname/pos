@@ -11,6 +11,7 @@
             document.getElementById('uqr_code').value = product.qrcode ?? '';
             document.getElementById('ubuy_price').value = product.buy_price ?? '';
             document.getElementById('usell_price').value = product.sell_price ?? '';
+            document.getElementById('uuom').value = product.uom ?? '';
             document.getElementById('udescription').value = product.description ?? '';
             document.getElementById('uis_active').value = product.is_active ?? '';
         });
@@ -41,6 +42,7 @@
                 qrcode: 'QR/Bar Code',
                 buy_price: 'Buy Price',
                 sell_price: 'Sell Price',
+                uom: 'Unit of Material',
                 description : 'Description',
                 is_active : {
                     label : 'Status',

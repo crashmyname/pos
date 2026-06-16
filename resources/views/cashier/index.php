@@ -1305,155 +1305,456 @@ document.getElementById('member-input').addEventListener('input', function() {
     }
 });
 
-let products = []
+let products = [];
 let cart = [];
 let holdBills = [];
 let transactions = [];
 let returnTransactionIndex = null;
 let returns = [];
 
-async function fetchProducts(){
-    try{
-        const response = await fetch('<?= route('data.cashier.product')?>')
-        const result = await response.json()
-        products = result.data.map(item => ({
-            id: item.id,
-            barcode: item.qrcode,
-            name: item.name,
-            price: parseFloat(item.sell_price) || 0
-        }));
-        renderQuickProducts();
-    } catch(error){
-        console.error('Error fetching products:', error)
+let productPagination = {
+    currentPage: 0,
+    lastPage: 1,
+    total: 0,
+    isLoading: false,
+    allLoaded: false,
+    perPage: 25
+};
+
+// ==========================================
+// HELPER FUNCTIONS
+// ==========================================
+function findProductById(id) {
+    return products.find(p => p.id == id);
+}
+
+function addProductToList(product) {
+    if (!products.find(p => p.id == product.id)) {
+        products.push(product);
     }
 }
 
-fetchProducts();
+function format(number) {
+    return new Intl.NumberFormat('id-ID').format(number);
+}
 
-function renderQuickProducts(){
+// ==========================================
+// FETCH PRODUCTS
+// ==========================================
+async function fetchProducts(page = 1) {
+    if (productPagination.isLoading) return;
+    if (productPagination.allLoaded && page > 1) return;
+    
+    productPagination.isLoading = true;
 
+    const loadMoreBtn = document.getElementById('btnLoadMore');
+    if (loadMoreBtn) {
+        loadMoreBtn.innerHTML = '⏳ Loading...';
+        loadMoreBtn.disabled = true;
+    }
+    
+    try {
+        const response = await fetch(`<?= route('data.cashier.product') ?>?page=${page}`);
+        const result = await response.json();
+        
+        if (result.data && result.data.length > 0) {
+            const newProducts = result.data.map(item => ({
+                id: item.id,
+                barcode: item.qrcode,
+                name: item.name,
+                price: parseFloat(item.sell_price) || 0
+            }));
+            
+            const existingIds = new Set(products.map(p => p.id));
+            const uniqueNew = newProducts.filter(p => !existingIds.has(p.id));
+            products = products.concat(uniqueNew);
+            
+            productPagination.currentPage = result.pagination.current_page;
+            productPagination.lastPage = result.pagination.last_page;
+            productPagination.total = result.pagination.total;
+            
+            if (result.pagination.current_page >= result.pagination.last_page) {
+                productPagination.allLoaded = true;
+            }
+        } else {
+            productPagination.allLoaded = true;
+        }
+        
+        renderQuickProducts();
+        
+    } catch (error) {
+        console.error('Error fetching products:', error);
+    } finally {
+        productPagination.isLoading = false;
+    }
+}
+
+async function loadMoreProducts() {
+    if (productPagination.allLoaded) return;
+    if (productPagination.isLoading) return;
+    
+    const nextPage = productPagination.currentPage + 1;
+    await fetchProducts(nextPage);
+}
+
+// ==========================================
+// RENDER QUICK PRODUCTS
+// ==========================================
+function renderQuickProducts() {
     let html = '';
-
+    
     products.forEach(product => {
-
         html += `
             <div class="col-6">
-
-                <div class="quick-product"
-                     onclick="addToCart(${product.id})">
-
-                    <div class="fw-bold">
-                        ${product.name}
-                    </div>
-
-                    <div class="small text-secondary">
-                        ${product.barcode}
-                    </div>
-
-                    <div class="mt-2 fw-bold text-primary">
-                        Rp ${format(product.price)}
-                    </div>
-
+                <div class="quick-product" onclick="addToCart(${product.id})">
+                    <div class="fw-bold">${product.name}</div>
+                    <div class="small text-secondary">${product.barcode}</div>
+                    <div class="mt-2 fw-bold text-primary">Rp ${format(product.price)}</div>
                 </div>
-
             </div>
         `;
-
     });
-
+    
+    if (!productPagination.allLoaded) {
+        html += `<div id="scroll-sentinel" style="height:1px;"></div>`;
+    }
+    
+    if (!productPagination.allLoaded && products.length > 0) {
+        html += `
+            <div class="col-12 text-center mt-2 mb-3">
+                <button class="btn btn-sm btn-outline-primary" 
+                        onclick="loadMoreProducts()" 
+                        id="btnLoadMore"
+                        ${productPagination.isLoading ? 'disabled' : ''}>
+                    ${productPagination.isLoading ? '⏳ Loading...' : `📥 Load More (${products.length}/${productPagination.total})`}
+                </button>
+            </div>
+        `;
+    }
+    
+    if (productPagination.allLoaded && products.length > 0) {
+        html += `
+            <div class="col-12 text-center mt-1 mb-2">
+                <small class="text-success">${products.length} produk dimuat</small>
+            </div>
+        `;
+    }
+    
     document.getElementById('quick-products').innerHTML = html;
-
+    setupInfiniteScroll();
 }
 
-document.getElementById('search-product')
-.addEventListener('keyup', function(){
+// ==========================================
+// SEARCH PRODUCTS
+// ==========================================
+let searchTimeout;
 
-    let keyword = this.value.toLowerCase();
-
-    if(keyword === ''){
-
+document.getElementById('search-product').addEventListener('keyup', function() {
+    const keyword = this.value.trim();
+    
+    if (keyword === '') {
         document.getElementById('product-results').innerHTML = '';
         return;
-
     }
 
-    let result = products.filter(product => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        searchProducts(keyword);
+    }, 300);
+});
 
-        return product.name.toLowerCase().includes(keyword)
-            || product.barcode.includes(keyword);
+async function searchProducts(keyword) {
+    keyword = keyword.toLowerCase().trim();
+    
+    if (keyword === '') return;
 
-    });
+    document.getElementById('product-results').innerHTML = `
+        <div class="text-center p-2">
+            <small class="text-muted">🔍 Mencari...</small>
+        </div>
+    `;
+    
+    try {
+        const response = await fetch(`<?= route('data.cashier.product') ?>?search=${encodeURIComponent(keyword)}&per_page=20`);
+        const result = await response.json();
+        
+        if (result.data && result.data.length > 0) {
+            const searchResults = result.data.map(item => ({
+                id: item.id,
+                barcode: item.qrcode,
+                name: item.name,
+                price: parseFloat(item.sell_price) || 0
+            }));
+            
+            // Simpan hasil search ke products[] biar addToCart bisa nemu
+            searchResults.forEach(p => addProductToList(p));
+            
+            renderSearchResults(searchResults);
+        } else {
+            renderSearchResults([]);
+        }
+        
+    } catch (error) {
+        console.error('Search error:', error);
+        renderSearchResults([]);
+    }
+}
 
+function renderSearchResults(results) {
     let html = '';
-
-    result.forEach(product => {
-
-        html += `
-            <div class="product-item"
-                 onclick="addToCart(${product.id})">
-
-                <div class="d-flex justify-content-between">
-
-                    <div>
-
-                        <div class="fw-bold">
-                            ${product.name}
+    
+    if (results.length > 0) {
+        results.forEach(product => {
+            html += `
+                <div class="product-item" onclick="addToCart(${product.id})" style="cursor:pointer;">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="fw-bold">${product.name}</div>
+                            <div class="small text-secondary">${product.barcode}</div>
                         </div>
-
-                        <div class="small text-secondary">
-                            ${product.barcode}
-                        </div>
-
+                        <div class="fw-bold text-primary">Rp ${format(product.price)}</div>
                     </div>
-
-                    <div class="fw-bold text-primary">
-                        Rp ${format(product.price)}
-                    </div>
-
                 </div>
-
+            `;
+        });
+    } else {
+        html = `
+            <div class="text-center p-2">
+                <small class="text-muted">❌ Produk tidak ditemukan</small>
             </div>
         `;
-
-    });
-
+    }
+    
     document.getElementById('product-results').innerHTML = html;
+}
 
-});
+// ==========================================
+// ADD TO CART
+// ==========================================
+function addToCart(productId) {
+    let product = findProductById(productId);
+    
+    // Kalau produk ga ketemu di array, fetch dulu dari backend
+    if (!product) {
+        fetchAndAddToCart(productId);
+        return;
+    }
+    
+    // Cek apakah sudah ada di cart
+    let existingItem = cart.find(item => item.id == productId);
+    
+    if (existingItem) {
+        existingItem.qty += 1;
+        existingItem.subtotal = existingItem.qty * existingItem.price;
+    } else {
+        cart.push({
+            id: product.id,
+            barcode: product.barcode,
+            name: product.name,
+            price: product.price,
+            qty: 1,
+            subtotal: product.price
+        });
+    }
+    
+    renderCart();
+    calculateTotal();
+}
 
-document.getElementById('scan-product')
-.addEventListener('keydown', function(e){
+async function fetchAndAddToCart(productId) {
+    try {
+        const response = await fetch(`<?= route('data.cashier.product') ?>?search=${productId}&per_page=1`);
+        const result = await response.json();
+        
+        if (result.data && result.data.length > 0) {
+            const item = result.data[0];
+            
+            const product = {
+                id: item.id,
+                barcode: item.qrcode,
+                name: item.name,
+                price: parseFloat(item.sell_price) || 0
+            };
+            
+            // Simpan ke products[]
+            addProductToList(product);
+            
+            // Tambah ke cart
+            let existingItem = cart.find(cartItem => cartItem.id == product.id);
+            
+            if (existingItem) {
+                existingItem.qty += 1;
+                existingItem.subtotal = existingItem.qty * existingItem.price;
+            } else {
+                cart.push({
+                    id: product.id,
+                    barcode: product.barcode,
+                    name: product.name,
+                    price: product.price,
+                    qty: 1,
+                    subtotal: product.price
+                });
+            }
+            
+            renderCart();
+            calculateTotal();
+            renderQuickProducts();
+        } else {
+            Alert.warning('Produk tidak ditemukan');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        Alert.warning('Gagal menambahkan produk');
+    }
+}
 
-    if(e.key !== 'Enter') return;
-
+// ==========================================
+// SCAN PRODUCT
+// ==========================================
+document.getElementById('scan-product').addEventListener('keydown', async function(e) {
+    if (e.key !== 'Enter') return;
+    
     e.preventDefault();
-
     let keyword = this.value.trim();
-
-    if(keyword === '') return;
-
-    let product = products.find(p =>
-        p.barcode === keyword ||
+    
+    if (keyword === '') return;
+    
+    // Cari di products[] lokal dulu
+    let product = products.find(p => 
+        p.barcode === keyword || 
         p.name.toLowerCase() === keyword.toLowerCase()
     );
-
-    if(product){
-
+    
+    if (product) {
         addToCart(product.id);
-
-        // kosongkan search
         this.value = '';
-
-        // kosongkan hasil pencarian
         document.getElementById('product-results').innerHTML = '';
-
-    }else{
-
-        Alert.warning('Produk tidak ditemukan');
-
+        return;
     }
+    
+    // Kalau ga ada, cari dari backend
+    try {
+        const response = await fetch(`<?= route('data.cashier.product') ?>?search=${encodeURIComponent(keyword)}&per_page=1`);
+        const result = await response.json();
+        
+        if (result.data && result.data.length > 0) {
+            const item = result.data[0];
+            
+            const newProduct = {
+                id: item.id,
+                barcode: item.qrcode,
+                name: item.name,
+                price: parseFloat(item.sell_price) || 0
+            };
 
+            addProductToList(newProduct);
+            renderQuickProducts();
+            addToCart(item.id);
+            
+            this.value = '';
+            document.getElementById('product-results').innerHTML = '';
+        } else {
+            Alert.warning('Produk tidak ditemukan');
+        }
+    } catch (error) {
+        Alert.warning('Gagal mencari produk');
+    }
 });
+
+// ==========================================
+// RENDER CART
+// ==========================================
+function renderCart() {
+    let html = '';
+    
+    if (cart.length === 0) {
+        html = `
+            <div class="text-center p-3 text-muted">
+                <div style="font-size:30px;">🛒</div>
+                <small>Keranjang kosong</small>
+            </div>
+        `;
+    } else {
+        cart.forEach((item, index) => {
+            html += `
+                <div class="cart-item d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                    <div style="flex:1; min-width:0;">
+                        <div class="fw-bold small text-truncate">${item.name}</div>
+                        <small class="text-muted">Rp ${format(item.price)}</small>
+                        <div class="d-flex align-items-center mt-1">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="updateQty(${index}, -1)">−</button>
+                            <span class="mx-2 fw-bold">${item.qty}</span>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="updateQty(${index}, 1)">+</button>
+                        </div>
+                    </div>
+                    <div class="text-right ml-2">
+                        <div class="fw-bold text-primary">Rp ${format(item.subtotal)}</div>
+                        <button class="btn btn-sm text-danger mt-1" onclick="removeFromCart(${index})">✕</button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    document.getElementById('cart-items').innerHTML = html;
+}
+
+function updateQty(index, change) {
+    cart[index].qty += change;
+    
+    if (cart[index].qty <= 0) {
+        cart.splice(index, 1);
+    } else {
+        cart[index].subtotal = cart[index].qty * cart[index].price;
+    }
+    
+    renderCart();
+    calculateTotal();
+}
+
+function removeFromCart(index) {
+    cart.splice(index, 1);
+    renderCart();
+    calculateTotal();
+}
+
+function calculateTotal() {
+    let total = cart.reduce((sum, item) => sum + item.subtotal, 0);
+    document.getElementById('cart-total').textContent = format(total);
+}
+
+// ==========================================
+// INFINITE SCROLL
+// ==========================================
+let scrollObserver;
+
+function setupInfiniteScroll() {
+    const sentinel = document.getElementById('scroll-sentinel');
+    if (!sentinel) return;
+    
+    if (scrollObserver) scrollObserver.disconnect();
+    
+    scrollObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting && !productPagination.allLoaded && !productPagination.isLoading) {
+                loadMoreProducts();
+            }
+        });
+    }, {
+        rootMargin: '100px'
+    });
+    
+    scrollObserver.observe(sentinel);
+}
+
+// ==========================================
+// INIT
+// ==========================================
+async function init() {
+    await fetchProducts(1);
+}
+
+init();
 
 function addToCart(id){
 

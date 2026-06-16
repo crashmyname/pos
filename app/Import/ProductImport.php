@@ -31,6 +31,7 @@ class ProductImport extends Importer
             'description' => $mappedRow['description'] ?? null,
             'buy_price' => $mappedRow['buy_price'],
             'sell_price' => $mappedRow['sell_price'],
+            'uom' => $mappedRow['uom'],
             'stock_id' => $mappedRow['stock_id'],
             'is_active' => $mappedRow['is_active'],
         ]);

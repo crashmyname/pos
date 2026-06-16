@@ -283,8 +283,8 @@ class LabelBarcodeService
         }
         
         .label-date {
-            font-size: 3.5pt;
-            color: #bbb;
+            font-size: 5.5pt;
+            color: #000000;
         }
         
         .label-category {
@@ -334,6 +334,7 @@ HTML;
         $price = $product['sell_price'] ?? $product['price'] ?? 0;
         $date = date('d/m/Y');
         $category = strtoupper(substr($product['category'] ?? '', 0, 12));
+        $uom = $product['uom'] ?? '';
 
         // Brand toko (bisa di-set dari config atau hardcode)
         $brandName = 'STANLEY MART';
@@ -348,6 +349,7 @@ HTML;
         $priceFormatted = htmlspecialchars($priceFormatted, ENT_QUOTES, 'UTF-8');
         $category = htmlspecialchars($category, ENT_QUOTES, 'UTF-8');
         $brandName = htmlspecialchars($brandName, ENT_QUOTES, 'UTF-8');
+        $uom = htmlspecialchars($uom, ENT_QUOTES, 'UTF-8');
 
         $categoryBadge = $category ? "<span class='label-category'>{$category}</span>" : '';
         $companyHTML = $company ? "<div class='label-company'>{$company}</div>" : '';
@@ -376,8 +378,10 @@ HTML;
                 
                 <!-- KANAN: Harga BESAR -->
                 <div class="label-price-col">
-                    <div class="label-price">{$priceFormatted}</div>
+                    <div class="label-price">{$priceFormatted}</div> 
                 </div>
+                <br>
+                <span class="label-date">/ {$uom}</span>
             </div>
             
             <!-- FOOTER: Tanggal + Kategori -->

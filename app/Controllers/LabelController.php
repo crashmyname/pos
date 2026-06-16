@@ -88,7 +88,7 @@ class LabelController extends BaseController
         $products = Product::query()
             ->whereIn('products.id', $selectedIds)
             ->where('is_active', '=', '1')
-            ->select('products.id', 'products.name', 'qrcode', 'sell_price', 'categories.name as category', 'suppliers.name as company')
+            ->select('products.id', 'products.name', 'qrcode', 'sell_price', 'categories.name as category', 'suppliers.name as company','uom')
             ->leftJoin('suppliers','suppliers.id','=','products.supplier_id')
             ->leftJoin('categories','categories.id','=','products.category_id')
             ->orderBy('products.name', 'ASC')
@@ -118,7 +118,7 @@ class LabelController extends BaseController
     {
         $products = Product::query()
             ->where('is_active', '=', '1')
-            ->select('products.id', 'products.name', 'qrcode', 'sell_price', 'categories.name as category', 'suppliers.name as company')
+            ->select('products.id', 'products.name', 'qrcode', 'sell_price', 'categories.name as category', 'suppliers.name as company','uom')
             ->leftJoin('suppliers','suppliers.id','=','products.supplier_id')
             ->leftJoin('categories','categories.id','=','products.category_id')
             ->orderBy('products.name', 'ASC')
@@ -145,7 +145,7 @@ class LabelController extends BaseController
         $products = Product::query()
             ->where('is_active', '=', '1')
             // ->where('category', '=', urldecode($category))
-            ->select('products.id', 'products.name', 'qrcode', 'sell_price', 'categories.name as category', 'suppliers.name as company')
+            ->select('products.id', 'products.name', 'qrcode', 'sell_price', 'categories.name as category', 'suppliers.name as company','uom')
             ->leftJoin('suppliers','suppliers.id','=','products.supplier_id')
             ->leftJoin('categories','categories.id','=','products.category_id')
             ->orderBy('products.name', 'ASC')
@@ -176,7 +176,7 @@ class LabelController extends BaseController
             if (empty($item['id']) || empty($item['quantity'])) continue;
             
             $product = Product::query()
-                ->select('products.id', 'products.name', 'qrcode', 'sell_price', 'categories.name as category', 'suppliers.name as company')
+                ->select('products.id', 'products.name', 'qrcode', 'sell_price', 'categories.name as category', 'suppliers.name as company','uom')
                 ->leftJoin('suppliers','suppliers.id','=','products.supplier_id')
                 ->leftJoin('categories','categories.id','=','products.category_id')
                 ->where('id', '=', $item['id'])
@@ -224,7 +224,7 @@ class LabelController extends BaseController
         $products = Product::query()
             ->whereIn('id', $selectedIds)
             ->where('is_active', '=', '1')
-            ->select('products.id', 'products.name', 'qrcode', 'sell_price', 'categories.name as category', 'suppliers.name as company')
+            ->select('products.id', 'products.name', 'qrcode', 'sell_price', 'categories.name as category', 'suppliers.name as company','uom')
             ->leftJoin('suppliers','suppliers.id','=','products.supplier_id')
             ->leftJoin('categories','categories.id','=','products.category_id')
             ->orderBy('products.name', 'ASC')
@@ -250,7 +250,7 @@ class LabelController extends BaseController
     public function printSingle($id)
     {
         $product = Product::query()
-            ->select('products.id', 'products.name', 'qrcode', 'sell_price', 'categories.name as category', 'suppliers.name as company')
+            ->select('products.id', 'products.name', 'qrcode', 'sell_price', 'categories.name as category', 'suppliers.name as company','uom')
             ->leftJoin('suppliers','suppliers.id','=','products.supplier_id')
             ->leftJoin('categories','categories.id','=','products.category_id')
             ->where('products.id', '=', $id)

@@ -26,9 +26,11 @@ class CashierController extends BaseController
         return $this->view('cashier/index',compact('title'),'layouts/cashier');
     }
 
-    public function getProduct()
+    public function getProduct(Request $request)
     {
-        return $this->json($this->productService->getProduct(),200);
+        $perPage = $request->input('per_page', 25);
+        $search = $request->input('search',null);
+        return $this->json($this->productService->getProduct($perPage,$search),200);
     }
 
     public function getDailyTransaction()

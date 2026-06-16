@@ -616,6 +616,7 @@ unset($_SESSION['error'], $_SESSION['success']);
                                     <th>Nama Produk</th>
                                     <th>Barcode</th>
                                     <th>Kategori</th>
+                                    <th>UOM</th>
                                     <th>Harga Jual</th>
                                     <th width="80">Status</th>
                                     <th width="80">Aksi</th>
@@ -639,6 +640,7 @@ unset($_SESSION['error'], $_SESSION['success']);
                                         $barcode = is_array($product) ? ($product['qrcode'] ?? '') : ($product->qrcode ?? '');
                                         $category = is_array($product) ? ($product['category'] ?? '') : ($product->category ?? '');
                                         $company = is_array($product) ? ($product['company'] ?? '') : ($product->company ?? '');
+                                        $uom = is_array($product) ? ($product['uom'] ?? '') : ($product->uom ?? '');
                                         $price = is_array($product) ? ($product['sell_price'] ?? 0) : ($product->sell_price ?? 0);
                                     ?>
                                     <tr>
@@ -658,6 +660,9 @@ unset($_SESSION['error'], $_SESSION['success']);
                                         <td><code><?= htmlspecialchars($barcode) ?></code></td>
                                         <td>
                                             <span class="badge badge-info"><?= htmlspecialchars($category ?: 'Umum') ?></span>
+                                        </td>
+                                        <td>
+                                            <strong><?=  htmlspecialchars($uom ?: '-')?></strong>
                                         </td>
                                         <td>
                                             <strong>Rp <?= number_format($price, 0, ',', '.') ?></strong>

@@ -72,6 +72,10 @@
                             <input type="text" class="form-control" name="sell_price" id="sell_price">
                         </div>
                         <div class="mb-3">
+                            <label class="form-label">Unit Of Material</label>
+                            <input type="text" class="form-control" name="uom" id="uom">
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label">Image</label>
                             <input type="file" class="form-control" name="image" id="image">
                         </div>
@@ -149,6 +153,10 @@
                         <div class="mb-3">
                             <label class="form-label">Sell Price</label>
                             <input type="text" class="form-control" name="sell_price" id="usell_price">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Unit of Material</label>
+                            <input type="text" class="form-control" name="uom" id="uuom">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Image</label>
