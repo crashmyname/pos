@@ -13,17 +13,21 @@ class ReportService
         $now = Date::parse(Date::Now())->format('Y-m-d');
         $transaction = Transaction::query()
                                 ->select('COUNT(id) as jumlah_transaction','SUM(grand_total) as total_transaction','transaction_date')
-                                ->whereDate('transaction_date',$now)->first();
+                                ->whereDate('transaction_date',$now)
+                                ->groupBy('transaction_date')
+                                ->first();
         $paymentSummary = Transaction::query()
                                     ->select('payment_method','COUNT(id) as jumlah_transaction','SUM(grand_total) as total_transaction','transaction_date')
                                     ->whereDate('transaction_date',$now)
-                                    ->groupBy('id')
-                                    ->groupBy('payment_method')
+                                    ->groupBy(['payment_method','transaction_date'])
+                                    // ->groupBy('transaction_date')
                                     ->get();
         $cashierActivity = Transaction::query()
                                     ->with(['users'])
                                     ->select('payment_method','COUNT(id) as jumlah_transaction','SUM(grand_total) as total_transaction','transaction_date','user_id')
                                     ->whereDate('transaction_date',$now)
+                                    ->groupBy(['payment_method','transaction_date','user_id'])
+                                    // ->groupBy('transaction_date')
                                     ->first();
         return [
           'success' => true,

@@ -399,7 +399,7 @@
                 <!-- QRIS -->
                 <div id="qris-section"
                      class="d-none">
-
+                     <input type="hidden" id="dataqris" name="dataqris">
                     <div class="text-center">
 
                         <img src="" id="qrisdinamis"
@@ -1949,7 +1949,7 @@ async function generateQRIS(amount) {
 
         if (data.success) {
             document.getElementById('qrisdinamis').src = data.qris_image;
-            
+            document.getElementById('dataqris').value = data.qris_image
             Swal.close();
         } else {
             Swal.fire('Error', 'Gagal generate QRIS', 'error');
@@ -2924,6 +2924,16 @@ document.getElementById('btn-complete-payment')
         const invoiceNumber = dbResult.data.invoice;
         const transactionDate = dbResult.data.date;
 
+        let qrisImageData = null;
+        if (selectedPayment === 'qris') {
+            const qrisImg = document.getElementById('qrisdinamis');
+            if (qrisImg && qrisImg.src) {
+                qrisImageData = qrisImg.src.includes('base64,') 
+                    ? qrisImg.src.split('base64,')[1] 
+                    : qrisImg.src;
+            }
+        }
+
         const receiptData = {
             invoice: invoiceNumber,
             date: transactionDate,
@@ -2935,6 +2945,7 @@ document.getElementById('btn-complete-payment')
             pay: pay,
             change: change,
             charge: charge,
+            qris_image: qrisImageData,
             items: cart.map(item => ({
                 name: item.name,
                 qty: item.qty,
@@ -3003,7 +3014,7 @@ async function printReceipt(receiptData) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ receipt: receiptData }),
+            body: JSON.stringify({ receipt: receiptData, qr_image: receiptData.qris_image || null }),
             signal: printController.signal
         });
         

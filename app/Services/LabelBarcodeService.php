@@ -199,7 +199,7 @@ class LabelBarcodeService
         }
         
         .label-name {
-            font-size: 10pt;
+            font-size: 7pt;
             font-weight: bold;
             text-transform: uppercase;
             line-height: 1.2;
