@@ -2975,6 +2975,13 @@ document.getElementById('btn-complete-payment')
         
         // Tampilkan pesan sukses
         Alert.success('Pembayaran berhasil! Transaksi tersimpan.','success',3000);
+
+        setTimeout(() => {
+            const scanInput = document.getElementById('scan-product');
+            if (scanInput) {
+                scanInput.focus();
+            }
+        }, 300);
         
     } catch(error) {
         console.error('Transaction error:', error);

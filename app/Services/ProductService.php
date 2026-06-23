@@ -14,6 +14,7 @@ class ProductService
         return Product::query()
         ->select('id','name','qrcode','sell_price')
         ->where('name','LIKE',"%$search%")
+        ->orWhere('qrcode','LIKE',"%$search%")
         ->paginate($perPage);
     }
     public function getData($request)
@@ -26,8 +27,8 @@ class ProductService
                         ->leftJoin('categories','categories.id','=','products.category_id')
                         ->leftJoin('suppliers','suppliers.id','=','products.supplier_id')
                         ->searchable([
-                            'name',
-                            'description',
+                            'products.name',
+                            'products.description',
                             'qrcode',
                             'buy_price',
                             'sell_price'
