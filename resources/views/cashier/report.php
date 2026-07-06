@@ -526,28 +526,35 @@ function renderPaymentSummary(paymentData) {
 function renderCashierActivity(cashierData) {
     const tbody = document.getElementById('cashierActivityBody');
     
-    if (!cashierData || !cashierData.user_id) {
+    // Cek apakah data ada dan merupakan array
+    if (!cashierData || !Array.isArray(cashierData) || cashierData.length === 0) {
         tbody.innerHTML = `<tr><td colspan="4" class="text-center text-secondary py-4">👤 No cashier data</td></tr>`;
         return;
     }
     
-    const userName = cashierData.users?.[0]?.name || `Cashier #${cashierData.user_id}`;
+    // Clear table
+    tbody.innerHTML = '';
     
-    tbody.innerHTML = `
-        <tr>
+    // Loop untuk setiap cashier
+    cashierData.forEach(cashier => {
+        const userName = cashier.users?.[0]?.name || `Cashier #${cashier.user_id}`;
+        
+        const row = document.createElement('tr');
+        row.innerHTML = `
             <td>
                 <div class="d-flex align-items-center">
                     <span class="avatar avatar-sm me-2" style="background:#e3f2fd;color:#1976d2;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;font-weight:bold;font-size:14px;">
-                        ${getInitials(cashierData.user_id)}
+                        ${getInitials(userName)}
                     </span>
                     ${userName}
                 </div>
             </td>
-            <td>${formatNumber(cashierData.jumlah_transaction || 0)}</td>
-            <td class="fw-bold text-primary">${formatRupiah(cashierData.total_transaction || 0)}</td>
+            <td>${formatNumber(cashier.jumlah_transaction || 0)}</td>
+            <td class="fw-bold text-primary">${formatRupiah(cashier.total_transaction || 0)}</td>
             <td><span class="badge bg-success-lt">ACTIVE</span></td>
-        </tr>
-    `;
+        `;
+        tbody.appendChild(row);
+    });
 }
 
 function showError(message) {

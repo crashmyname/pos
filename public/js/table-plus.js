@@ -27,6 +27,7 @@ class TablePlus {
     this.customActions = config.customActions || [];
     this.rowIdentifier = config.rowIdentifier || 'id';
     this.customFilters = config.customFilters || {};
+    this.forceDefaultPerPage = config.forceDefaultPerPage || false;
 
     this.virtual = {
         enabled: false,
@@ -38,6 +39,9 @@ class TablePlus {
     
     if (this.savePreferences) {
       this.loadPreferences();
+    }
+    if (this.forceDefaultPerPage) {
+        this.perPage = config.perPage || 10;
     }
   }
 
@@ -89,7 +93,7 @@ class TablePlus {
       if (saved) {
         const prefs = JSON.parse(saved);
         this.visibleColumns = prefs.visibleColumns || this.visibleColumns;
-        this.perPage = prefs.perPage || this.perPage;
+        // this.perPage = prefs.perPage || this.perPage;
         this.sortKey = prefs.sortKey || null;
         this.sortOrder = prefs.sortOrder || 'asc';
       }

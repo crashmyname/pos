@@ -12,23 +12,23 @@ class ReportService
     {
         $now = Date::parse(Date::Now())->format('Y-m-d');
         $transaction = Transaction::query()
-                                ->select('COUNT(id) as jumlah_transaction','SUM(grand_total) as total_transaction','transaction_date')
+                                ->select('COUNT(id) as jumlah_transaction','SUM(grand_total) as total_transaction')
                                 ->whereDate('transaction_date',$now)
-                                ->groupBy('transaction_date')
+                                // ->groupBy('transaction_date')
                                 ->first();
         $paymentSummary = Transaction::query()
-                                    ->select('payment_method','COUNT(id) as jumlah_transaction','SUM(grand_total) as total_transaction','transaction_date')
+                                    ->select('payment_method','COUNT(id) as jumlah_transaction','SUM(grand_total) as total_transaction')
                                     ->whereDate('transaction_date',$now)
-                                    ->groupBy(['payment_method','transaction_date'])
+                                    ->groupBy(['payment_method'])
                                     // ->groupBy('transaction_date')
                                     ->get();
         $cashierActivity = Transaction::query()
                                     ->with(['users'])
-                                    ->select('payment_method','COUNT(id) as jumlah_transaction','SUM(grand_total) as total_transaction','transaction_date','user_id')
+                                    ->select('COUNT(id) as jumlah_transaction','SUM(grand_total) as total_transaction','user_id')
                                     ->whereDate('transaction_date',$now)
-                                    ->groupBy(['payment_method','transaction_date','user_id'])
+                                    ->groupBy(['user_id'])
                                     // ->groupBy('transaction_date')
-                                    ->first();
+                                    ->get(\PDO::FETCH_ASSOC, true);
         return [
           'success' => true,
           'statusCode' => 200,
@@ -36,7 +36,7 @@ class ReportService
           'data' => [
             'transaction' => $transaction == null ? null : $transaction->toArray(),
             'payment_summary' => $paymentSummary == null ? null : $paymentSummary,
-            'cashier_activity' => $cashierActivity == null ? null : $cashierActivity->toCleanArray(),
+            'cashier_activity' => $cashierActivity == null ? null : Transaction::toCleanArrayCollection($cashierActivity),
           ]
         ];
     }

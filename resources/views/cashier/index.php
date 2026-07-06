@@ -1112,6 +1112,84 @@ body{
 </style>
 <script src="<?= asset_v('js/custom-alert.js')?>"></script>
 <script>
+    // Di bagian atas script JS kamu, tambahkan:
+
+const CSRF = {
+    token: null,
+    
+    // Ambil token dari berbagai sumber
+    getToken() {
+        // Cek localStorage dulu (paling up-to-date)
+        const stored = localStorage.getItem('csrf_token');
+        if (stored) return stored;
+        
+        // Cek dari meta tag
+        const metaToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (metaToken) return metaToken;
+        
+        // Fallback ke PHP rendered token
+        return this.token || '<?= csrfHeader()?>';
+    },
+    
+    // Set token
+    setToken(token) {
+        this.token = token;
+        localStorage.setItem('csrf_token', token);
+        
+        // Update meta tag jika ada
+        const metaTag = document.querySelector('meta[name="csrf-token"]');
+        if (metaTag) {
+            metaTag.setAttribute('content', token);
+        }
+        
+        // Update hidden inputs
+        document.querySelectorAll('input[name="csrf_token"]').forEach(input => {
+            input.value = token;
+        });
+    },
+    
+    // Refresh token dari server
+    async refresh() {
+        try {
+            const response = await fetch('/pos/csrf-token', {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            const data = await response.json();
+            if (data.success && data.csrf_token) {
+                this.setToken(data.csrf_token);
+                return data.csrf_token;
+            }
+        } catch (error) {
+            console.error('Failed to refresh CSRF token:', error);
+        }
+        return null;
+    },
+    
+    // Auto refresh setiap 30 menit
+    startAutoRefresh() {
+        // Refresh setiap 30 menit (1800000 ms)
+        setInterval(async () => {
+            console.log('Auto-refreshing CSRF token...');
+            await this.refresh();
+        }, 1800000); // 30 menit
+        
+        // Juga refresh saat user kembali dari idle (visibility change)
+        document.addEventListener('visibilitychange', async () => {
+            if (!document.hidden) {
+                console.log('Tab active, refreshing CSRF token...');
+                await this.refresh();
+            }
+        });
+    }
+};
+
+// Inisialisasi
+CSRF.token = '<?= csrfHeader()?>';
+CSRF.startAutoRefresh();
 const Alert = new CustomAlert();
 
 let selectedMember = null;
@@ -1937,7 +2015,7 @@ async function generateQRIS(amount) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '<?= csrfHeader()?>'
+                'X-CSRF-TOKEN': CSRF.getToken()
             },
             body: JSON.stringify({
                 amount: amount,
@@ -2910,7 +2988,7 @@ document.getElementById('btn-complete-payment')
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '<?= csrfHeader()?>'
+                'X-CSRF-TOKEN': CSRF.getToken()
             },
             body: JSON.stringify(transactionData)
         });

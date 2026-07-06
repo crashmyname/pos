@@ -13,6 +13,7 @@ use App\Controllers\TransactionController;
 use App\Controllers\SupplierController;
 use App\Controllers\UserController;
 use Bpjs\Framework\Helpers\AuthMiddleware;
+use Bpjs\Framework\Helpers\Response;
 use Bpjs\Framework\Helpers\Route;
 use Bpjs\Framework\Helpers\View;
 
@@ -78,3 +79,38 @@ Route::group([AuthMiddleware::class], function(){
 
 // LOGOUT
 Route::post('/logout',[AuthController::class,'logout'])->name('logout');
+Route::get('/debug/session', function() {
+    $config = config('session');
+    
+    $data = [
+        'session_id' => session_id(),
+        'session_name' => session_name(),
+        'save_path' => session_save_path(),
+        'cookie_lifetime' => ini_get('session.cookie_lifetime'),
+        'gc_maxlifetime' => ini_get('session.gc_maxlifetime'),
+        'gc_probability' => ini_get('session.gc_probability'),
+        'gc_divisor' => ini_get('session.gc_divisor'),
+        'config_lifetime' => $config['lifetime'] ?? null,
+        'config_idle_timeout' => $config['idle_timeout'] ?? null,
+        'last_activity' => $_SESSION['last_activity'] ?? 'not set',
+        'idle_seconds' => isset($_SESSION['last_activity']) ? time() - $_SESSION['last_activity'] : 0,
+        'csrf_token_exists' => isset($_SESSION['csrf_token']),
+        'csrf_token_created' => $_SESSION['csrf_token_created'] ?? 'not set',
+        'csrf_age' => isset($_SESSION['csrf_token_created']) ? time() - $_SESSION['csrf_token_created'] : 0,
+        'session_data' => $_SESSION,
+    ];
+    return Response::json($data,200);
+});
+
+Route::get('/csrf-token', function() {
+    header('Content-Type: application/json');
+    
+    // Regenerate token
+    $newToken = csrfRegenerate();
+    
+    echo json_encode([
+        'success' => true,
+        'csrf_token' => $newToken
+    ]);
+    exit;
+});

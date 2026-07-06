@@ -15,6 +15,7 @@
             document.getElementById('udescription').value = product.description ?? '';
             document.getElementById('uis_active').value = product.is_active ?? '';
         });
+        localStorage.removeItem(`tableplus_${location.pathname}_${getProduct}`);
         const table = new TablePlus({
             url : getProduct,
             columns : {
@@ -52,9 +53,10 @@
                 }
             },
             perPage: 10,
-            perPageOptions: [10,20,50,100],
+            perPageOptions: [10,20,50,5000],
             rowIdentifier: 'id',
-            savePreferences: true
+            savePreferences: true,
+            forceDefaultPerPage: true
         })
         table.render('#productTable')
 $(document).ready(function(){

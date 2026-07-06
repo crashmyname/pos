@@ -2,33 +2,49 @@
 namespace Middlewares;
 
 class SessionMiddleware {
-    public static function start() {
+     public static function start() {
         if (session_status() === PHP_SESSION_NONE) {
             $config = config('session');
             if (!is_array($config)) {
                 $config = [];
             }
-            $lifetime = ($config['expire_on_close'] ?? false) ? 0 : ($config['lifetime'] ?? 120) * 60;
-            ini_set('session.gc_maxlifetime', $lifetime);
-            ini_set('session.cookie_lifetime', $lifetime);
+            
+            // Ambil lifetime dari config (dalam menit)
+            $lifetimeMinutes = (int)($config['lifetime'] ?? 120);
+            
+            // Ambil idle_timeout dari config (dalam detik)
+            $idleTimeout = (int)($config['idle_timeout'] ?? 28800); // Default 8 jam
+            
+            // Konversi ke detik
+            $lifetimeSeconds = $lifetimeMinutes * 60;
+            
+            // Set PHP session GC max lifetime mengikuti lifetime
+            ini_set('session.gc_maxlifetime', $lifetimeSeconds);
+            ini_set('session.cookie_lifetime', $lifetimeSeconds);
+            
+            // Kurangi probabilitas GC berjalan (opsional)
+            ini_set('session.gc_probability', 1);
+            ini_set('session.gc_divisor', 1000);
 
             $sessionName = strtoupper(preg_replace('/[^a-zA-Z0-9]/', '_', $config['app_name'] ?? 'bpjs')) . '_SESSID';
             session_name($sessionName);
 
             // Set save path untuk file session
             if (($config['driver'] ?? 'file') === 'file' && isset($config['storage_path'])) {
-                if (!is_dir($config['storage_path'])) {
-                    mkdir($config['storage_path'], 0755, true);
+                $savePath = $config['storage_path'];
+                if (!is_dir($savePath)) {
+                    mkdir($savePath, 0755, true);
                 }
-                session_save_path($config['storage_path']);
+                session_save_path($savePath);
             }
 
             ini_set('session.cookie_secure', ($config['secure'] ?? false) ? '1' : '0');
             ini_set('session.cookie_httponly', ($config['http_only'] ?? true) ? '1' : '0');
             ini_set('session.cookie_samesite', ucfirst($config['same_site'] ?? 'Lax'));
 
+            // Gunakan lifetime (bukan idle_timeout) untuk cookie
             session_set_cookie_params([
-                'lifetime' => $lifetime,
+                'lifetime' => $lifetimeSeconds, // Cookie lifetime = SESSION_LIFETIME
                 'path' => '/',
                 'domain' => '',
                 'secure' => $config['secure'] ?? false,
@@ -38,8 +54,28 @@ class SessionMiddleware {
 
             session_start();
 
-            if (!isset($_SESSION['csrf_token'])) {
+            // Cek idle timeout
+            if (isset($_SESSION['last_activity'])) {
+                $idleTime = time() - $_SESSION['last_activity'];
+                
+                // Jika idle melebihi idle_timeout, destroy session
+                if ($idleTime > $idleTimeout) {
+                    session_unset();
+                    session_destroy();
+                    session_start(); // Start new session
+                }
+            }
+            
+            // Update last activity time
+            $_SESSION['last_activity'] = time();
+
+            // Generate CSRF token jika belum ada atau sudah expired
+            $csrfRegenerateTime = ($config['csrf_regenerate'] ?? 4) * 3600; // Default 4 jam
+            if (!isset($_SESSION['csrf_token']) || 
+                !isset($_SESSION['csrf_token_created']) || 
+                (time() - $_SESSION['csrf_token_created'] > $csrfRegenerateTime)) {
                 $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+                $_SESSION['csrf_token_created'] = time();
             }
 
             self::storeDeviceFingerprint();
