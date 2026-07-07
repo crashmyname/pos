@@ -8,6 +8,7 @@ use App\Models\Transaction;
 use Bpjs\Framework\Helpers\Date;
 use Bpjs\Framework\Helpers\DB;
 use Bpjs\Framework\Helpers\Http\Http;
+use Bpjs\Framework\Helpers\Session;
 use Bpjs\Framework\Helpers\Validator;
 
 class TransactionService
@@ -59,6 +60,20 @@ class TransactionService
         }
         DB::beginTransaction();
         try{
+            $userId = Session::get('user_id');
+        
+            // Jika tidak ada di session, coba dari auth()->user()
+            if (!$userId) {
+                $user = auth()->user();
+                if ($user) {
+                    $userId = $user->id;
+                }
+            }
+            
+            // Jika masih null, throw error
+            if (!$userId) {
+                throw new \Exception('User tidak ditemukan atau tidak login');
+            }
             $invoiceNumber = $this->invoiceNumber();
             
             // Validasi invoice number
@@ -67,7 +82,7 @@ class TransactionService
             }
 
             $transaction = Transaction::create([
-                'user_id' => auth()->user()->id,
+                'user_id' => $userId,
                 'invoice_number' => $invoiceNumber,
                 'transaction_date' => Date::Now(),
                 'total_item' => count($data['items']),

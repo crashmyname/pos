@@ -22,18 +22,18 @@ Route::get('/login',[AuthController::class,'index'])->name('view.login');
 Route::post('/login',[AuthController::class,'loginCashier'])->name('login.cashier');
 Route::get('/admin',[AuthController::class,'indexAdmin'])->name('view.admin');
 Route::post('/admin',[AuthController::class,'loginAdmin'])->name('login.admin');
-Route::get('/data/transaction-records',[ReportController::class,'getTransactionRecords'])->name('records.transaction');
 
 Route::group([AuthMiddleware::class], function(){
     Route::get('/',[CashierController::class,'index'])->name('view.cashier');
     Route::get('/product',[CashierController::class,'getProduct'])->name('data.cashier.product');
-    Route::get('/daily/transaction',[CashierController::class,'getDailyTransaction'])->name('data.cashier.daily.transaction');
     Route::get('/report',[ReportController::class,'report'])->name('view.report');
-    Route::get('/data/report',[ReportController::class,'getReport'])->name('data.report');
     Route::post('/transaction',[TransactionController::class, 'create'])->name('create.transaction');
+    Route::get('/daily/transaction',[CashierController::class,'getDailyTransaction'])->name('data.cashier.daily.transaction');
+    Route::get('/data/report',[ReportController::class,'getReport'])->name('data.report');
+    Route::get('/data/transaction-records',[ReportController::class,'getTransactionRecords'])->name('records.transaction');
     Route::post('/closing/transaction',[TransactionController::class,'setupTransaction'])->name('closing.transaction');
     Route::post('/qris-generator',[QrisController::class,'generate'])->name('qris.generator');
-    });
+});
 // Route::get('/chart/label',[ChartController::class,'indexlabel']);
 
 Route::group([AuthMiddleware::class], function(){

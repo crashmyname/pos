@@ -37,6 +37,13 @@ class ProductController extends BaseController
         return $this->json($products,$products['statusCode']);
     }
 
+    public function getProduct(Request $request)
+    {
+        $perPage = $request->input('per_page', 25);
+        $search = $request->input('search',null);
+        return $this->json($this->productService->getProduct($perPage,$search),200);
+    }
+
     public function create(Request $request)
     {
         $product = $this->productService->createProduct($request->all());

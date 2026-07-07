@@ -35,14 +35,9 @@ class ReportController extends BaseController
 
     public function getTransactionRecords(Request $request)
     {
-        // if(!$request::isAjax()){
-        //     return redirect('report');
-        // }
-
         $page    = (int) ($_GET['page']     ?? $request->page     ?? 1);
         $perPage = (int) ($_GET['per_page'] ?? $request->per_page ?? 2);
 
-        // ✅ Pastikan keduanya ter-set
         $_GET['page']     = $page;
         $_GET['per_page'] = $perPage;
 

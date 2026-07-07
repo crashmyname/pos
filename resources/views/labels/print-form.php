@@ -489,13 +489,13 @@ unset($_SESSION['error'], $_SESSION['success']);
 <body>
     <!-- Navbar -->
     <nav class="navbar no-print">
-        <a href="/pos/labels" class="navbar-brand">
+        <a href="<?= route('label.index')?>" class="navbar-brand">
             🏷️ Print Label Barcode
         </a>
         <div class="navbar-nav">
             <a href="<?=  route('view.admin.home')?>" class="nav-link">Back to Admin</a>
-            <a href="/pos/labels" class="nav-link">🔄 Reset</a>
-            <a href="/pos/labels/print-all" class="nav-link" target="_blank">🖨️ Print Semua</a>
+            <a href="<?= route('label.index')?>" class="nav-link">🔄 Reset</a>
+            <a href="<?= route('print.all')?>" class="nav-link" target="_blank">🖨️ Print Semua</a>
         </div>
     </nav>
 
@@ -541,7 +541,7 @@ unset($_SESSION['error'], $_SESSION['success']);
         <!-- Filter & Search -->
         <div class="card no-print">
             <div class="card-body">
-                <form method="GET" action="/pos/labels" id="filterForm">
+                <form method="GET" action="<?= route('label.index')?>" id="filterForm">
                     <div class="row">
                         <div class="col-md-5">
                             <div class="input-group">
@@ -569,7 +569,7 @@ unset($_SESSION['error'], $_SESSION['success']);
                         </div>
                         <div class="col-md-2">
                             <?php if ($search || $selectedCategory): ?>
-                            <a href="/pos/labels" class="btn btn-outline-secondary btn-block">✕ Reset</a>
+                            <a href="<?= route('label.index')?>" class="btn btn-outline-secondary btn-block">✕ Reset</a>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -604,7 +604,7 @@ unset($_SESSION['error'], $_SESSION['success']);
                     </button>
                 </div>
 
-                <form id="printForm" method="POST" action="/pos/labels/print-selected" target="_blank">
+                <form id="printForm" method="POST" action="<?= route('print.selected')?>" target="_blank">
                     <?=  csrf() ?>
                     
                     <div class="table-responsive">
@@ -697,7 +697,7 @@ unset($_SESSION['error'], $_SESSION['success']);
                         ?>
                         
                         <li class="page-item <?= $currentPage <= 1 ? 'disabled' : '' ?>">
-                            <a class="page-link" href="/pos/labels?<?= $queryString ?>&page=<?= $currentPage - 1 ?>">« Prev</a>
+                            <a class="page-link" href="<?= url('lables')?>?<?= $queryString ?>&page=<?= $currentPage - 1 ?>">« Prev</a>
                         </li>
                         
                         <?php 
@@ -706,12 +706,12 @@ unset($_SESSION['error'], $_SESSION['success']);
                         for ($i = $start; $i <= $end; $i++): 
                         ?>
                         <li class="page-item <?= $i == $currentPage ? 'active' : '' ?>">
-                            <a class="page-link" href="/pos/labels?<?= $queryString ?>&page=<?= $i ?>"><?= $i ?></a>
+                            <a class="page-link" href="<?= url('labels')?>?<?= $queryString ?>&page=<?= $i ?>"><?= $i ?></a>
                         </li>
                         <?php endfor; ?>
                         
                         <li class="page-item <?= $currentPage >= $lastPage ? 'disabled' : '' ?>">
-                            <a class="page-link" href="/pos/labels?<?= $queryString ?>&page=<?= $currentPage + 1 ?>">Next »</a>
+                            <a class="page-link" href="<?= url('labels')?>?<?= $queryString ?>&page=<?= $currentPage + 1 ?>">Next »</a>
                         </li>
                     </ul>
                 </nav>
@@ -851,7 +851,7 @@ unset($_SESSION['error'], $_SESSION['success']);
         // ============ PRINT SINGLE ============
         window.printSingle = function(productId) {
             if (!productId) return;
-            window.open('/pos/labels/print-single/' + productId, '_blank');
+            window.open('<?= url('labels/print-single/')?>' + productId, '_blank');
         };
         
         // ============ PREVIEW LABELS ============
@@ -877,7 +877,7 @@ unset($_SESSION['error'], $_SESSION['success']);
             
             // Fetch preview via AJAX
             var xhr = new XMLHttpRequest();
-            xhr.open('POST', '/pos/labels/preview', true);
+            xhr.open('POST', '<?= route('preview.label')?>', true);
             xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
             xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
             
