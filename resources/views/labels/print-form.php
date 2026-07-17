@@ -96,6 +96,11 @@ unset($_SESSION['error'], $_SESSION['success']);
             color: #856404;
             border: 1px solid #ffeaa7;
         }
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
         .alert .close {
             position: absolute;
             right: 15px;
@@ -494,7 +499,7 @@ unset($_SESSION['error'], $_SESSION['success']);
         </a>
         <div class="navbar-nav">
             <a href="<?=  route('view.admin.home')?>" class="nav-link">Back to Admin</a>
-            <a href="<?= route('label.index')?>" class="nav-link">🔄 Reset</a>
+            <a href="<?= route('label.index')?>" class="nav-link" id="btnResetAll">🔄 Reset</a>
             <a href="<?= route('print.all')?>" class="nav-link" target="_blank">🖨️ Print Semua</a>
         </div>
     </nav>
@@ -514,6 +519,12 @@ unset($_SESSION['error'], $_SESSION['success']);
             <button class="close" onclick="this.parentElement.remove()">&times;</button>
         </div>
         <?php endif; ?>
+
+        <!-- Storage Info Alert -->
+        <div class="alert alert-info no-print" id="storageInfo" style="display:none;">
+            📦 <strong>Info:</strong> Ada <span id="storageTotalCount">0</span> produk tersimpan dari filter sebelumnya. 
+            Centang/Uncentang untuk update, atau klik <strong>Clear Selection Storage</strong> untuk hapus semua.
+        </div>
 
         <!-- Info Box -->
         <div class="info-box no-print">
@@ -554,7 +565,7 @@ unset($_SESSION['error'], $_SESSION['success']);
                             </div>
                         </div>
                         <div class="col-md-3">
-                            <select name="category" class="form-control" onchange="document.getElementById('filterForm').submit()">
+                            <select name="category" class="form-control" id="categorySelect">
                                 <option value="">Semua Kategori</option>
                                 <?php foreach ($categories as $cat): ?>
                                 <option value="<?= htmlspecialchars($cat) ?>" 
@@ -569,7 +580,7 @@ unset($_SESSION['error'], $_SESSION['success']);
                         </div>
                         <div class="col-md-2">
                             <?php if ($search || $selectedCategory): ?>
-                            <a href="<?= route('label.index')?>" class="btn btn-outline-secondary btn-block">✕ Reset</a>
+                            <a href="<?= route('label.index')?>" class="btn btn-outline-secondary btn-block" id="btnResetFilter">✕ Reset</a>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -591,21 +602,28 @@ unset($_SESSION['error'], $_SESSION['success']);
                 <!-- Action Buttons -->
                 <div class="mb-3">
                     <button type="button" class="btn btn-outline-primary btn-sm btn-action" id="btnSelectAll">
-                        ☑️ Pilih Semua
+                        ☑️ Pilih Semua di Halaman Ini
                     </button>
                     <button type="button" class="btn btn-outline-secondary btn-sm btn-action" id="btnDeselectAll">
-                        ☐ Hapus Pilihan
+                        ☐ Hapus Centang di Halaman Ini
                     </button>
-                    <button type="button" class="btn btn-success btn-sm btn-action" id="btnPrintSelected">
-                        🖨️ Print Terpilih <span class="selected-count" id="countSelected">0</span>
+                    <button type="button" class="btn btn-success btn-sm btn-action" id="btnPrintAllStored">
+                        🖨️ Print Semua Tersimpan <span class="selected-count" id="countStored">0</span>
+                    </button>
+                    <button type="button" class="btn btn-info btn-sm btn-action" id="btnPrintVisible">
+                        🖨️ Print Yang Tercentang <span class="selected-count" id="countSelected">0</span>
                     </button>
                     <button type="button" class="btn btn-info btn-sm btn-action" id="btnPreview">
                         👁️ Preview
+                    </button>
+                    <button type="button" class="btn btn-warning btn-sm btn-action" id="btnClearStorage">
+                        🗑️ Clear Selection Storage
                     </button>
                 </div>
 
                 <form id="printForm" method="POST" action="<?= route('print.selected')?>" target="_blank">
                     <?=  csrf() ?>
+                    <div id="hiddenInputsContainer"></div>
                     
                     <div class="table-responsive">
                         <table>
@@ -625,7 +643,7 @@ unset($_SESSION['error'], $_SESSION['success']);
                             <tbody>
                                 <?php if (empty($products['data'])): ?>
                                 <tr>
-                                    <td colspan="8" class="text-center">
+                                    <td colspan="9" class="text-center">
                                         <div class="alert alert-warning mb-0">
                                             ⚠️ Tidak ada produk ditemukan
                                         </div>
@@ -646,9 +664,10 @@ unset($_SESSION['error'], $_SESSION['success']);
                                     <tr>
                                         <td>
                                             <input type="checkbox" 
-                                                   name="selected_products[]" 
+                                                   name="visible_products[]" 
                                                    value="<?= htmlspecialchars($id) ?>" 
-                                                   class="product-checkbox">
+                                                   class="product-checkbox"
+                                                   data-product-id="<?= htmlspecialchars($id) ?>">
                                         </td>
                                         <td><?= $no++ ?></td>
                                         <td>
@@ -697,7 +716,7 @@ unset($_SESSION['error'], $_SESSION['success']);
                         ?>
                         
                         <li class="page-item <?= $currentPage <= 1 ? 'disabled' : '' ?>">
-                            <a class="page-link" href="<?= url('lables')?>?<?= $queryString ?>&page=<?= $currentPage - 1 ?>">« Prev</a>
+                            <a class="page-link pagination-link" href="<?= url('labels')?>?<?= $queryString ?>&page=<?= $currentPage - 1 ?>">« Prev</a>
                         </li>
                         
                         <?php 
@@ -706,12 +725,12 @@ unset($_SESSION['error'], $_SESSION['success']);
                         for ($i = $start; $i <= $end; $i++): 
                         ?>
                         <li class="page-item <?= $i == $currentPage ? 'active' : '' ?>">
-                            <a class="page-link" href="<?= url('labels')?>?<?= $queryString ?>&page=<?= $i ?>"><?= $i ?></a>
+                            <a class="page-link pagination-link" href="<?= url('labels')?>?<?= $queryString ?>&page=<?= $i ?>"><?= $i ?></a>
                         </li>
                         <?php endfor; ?>
                         
                         <li class="page-item <?= $currentPage >= $lastPage ? 'disabled' : '' ?>">
-                            <a class="page-link" href="<?= url('labels')?>?<?= $queryString ?>&page=<?= $currentPage + 1 ?>">Next »</a>
+                            <a class="page-link pagination-link" href="<?= url('labels')?>?<?= $queryString ?>&page=<?= $currentPage + 1 ?>">Next »</a>
                         </li>
                     </ul>
                 </nav>
@@ -752,83 +771,258 @@ unset($_SESSION['error'], $_SESSION['success']);
     </div>
 
     <!-- ============================================
-         VANILLA JAVASCRIPT (NO JQUERY)
+         VANILLA JAVASCRIPT - MERGE SYSTEM
          ============================================ -->
     <script>
     (function() {
         'use strict';
         
+        // ============ LOCAL STORAGE FUNCTIONS (MERGE SYSTEM) ============
+        
+        /**
+         * GET all stored IDs as array
+         */
+        function getStoredIds() {
+            var stored = localStorage.getItem('selectedLabelProducts');
+            if (!stored) return [];
+            try {
+                return JSON.parse(stored);
+            } catch(e) {
+                return [];
+            }
+        }
+        
+        /**
+         * SET stored IDs array to localStorage
+         */
+        function setStoredIds(idsArray) {
+            // Remove duplicates
+            var uniqueIds = [];
+            idsArray.forEach(function(id) {
+                if (uniqueIds.indexOf(id) === -1) {
+                    uniqueIds.push(id);
+                }
+            });
+            localStorage.setItem('selectedLabelProducts', JSON.stringify(uniqueIds));
+            return uniqueIds;
+        }
+        
+        /**
+         * MERGE currently checked IDs into storage (ADD checked, KEEP unchecked in storage)
+         */
+        function mergeCheckedToStorage() {
+            var storedIds = getStoredIds();
+            var checkedIds = [];
+            
+            document.querySelectorAll('.product-checkbox:checked').forEach(function(cb) {
+                if (storedIds.indexOf(cb.value) === -1) {
+                    storedIds.push(cb.value);
+                }
+                checkedIds.push(cb.value);
+            });
+            
+            // Remove IDs that are UNCHECKED on current page from storage
+            var visibleIds = [];
+            document.querySelectorAll('.product-checkbox').forEach(function(cb) {
+                visibleIds.push(cb.value);
+            });
+            
+            // Keep all stored IDs EXCEPT those that are visible AND unchecked
+            var newStoredIds = storedIds.filter(function(id) {
+                // If ID is visible on current page
+                if (visibleIds.indexOf(id) !== -1) {
+                    // Keep only if checked
+                    return checkedIds.indexOf(id) !== -1;
+                }
+                // If ID is NOT visible on current page, KEEP it in storage
+                return true;
+            });
+            
+            return setStoredIds(newStoredIds);
+        }
+        
+        /**
+         * REMOVE unchecked IDs from storage
+         */
+        function removeUncheckedFromStorage() {
+            var storedIds = getStoredIds();
+            var visibleIds = [];
+            var checkedIds = [];
+            
+            document.querySelectorAll('.product-checkbox').forEach(function(cb) {
+                visibleIds.push(cb.value);
+                if (cb.checked) {
+                    checkedIds.push(cb.value);
+                }
+            });
+            
+            var newStoredIds = storedIds.filter(function(id) {
+                // If ID is visible and NOT checked, remove it
+                if (visibleIds.indexOf(id) !== -1) {
+                    return checkedIds.indexOf(id) !== -1;
+                }
+                // If ID is not visible, keep it
+                return true;
+            });
+            
+            return setStoredIds(newStoredIds);
+        }
+        
+        /**
+         * ADD all visible IDs to storage
+         */
+        function addAllVisibleToStorage() {
+            var storedIds = getStoredIds();
+            document.querySelectorAll('.product-checkbox').forEach(function(cb) {
+                if (storedIds.indexOf(cb.value) === -1) {
+                    storedIds.push(cb.value);
+                }
+            });
+            return setStoredIds(storedIds);
+        }
+        
+        /**
+         * REMOVE all visible IDs from storage
+         */
+        function removeAllVisibleFromStorage() {
+            var storedIds = getStoredIds();
+            var visibleIds = [];
+            document.querySelectorAll('.product-checkbox').forEach(function(cb) {
+                visibleIds.push(cb.value);
+            });
+            
+            var newStoredIds = storedIds.filter(function(id) {
+                return visibleIds.indexOf(id) === -1;
+            });
+            
+            return setStoredIds(newStoredIds);
+        }
+        
+        /**
+         * CLEAR all storage
+         */
+        function clearAllStorage() {
+            localStorage.removeItem('selectedLabelProducts');
+        }
+        
+        /**
+         * Get total stored count
+         */
+        function getStoredCount() {
+            return getStoredIds().length;
+        }
+        
+        /**
+         * Load stored IDs and check matching checkboxes
+         */
+        function loadStoredToCheckboxes() {
+            var storedIds = getStoredIds();
+            document.querySelectorAll('.product-checkbox').forEach(function(cb) {
+                cb.checked = (storedIds.indexOf(cb.value) !== -1);
+            });
+        }
+        
+        /**
+         * Populate hidden inputs for form submission
+         */
+        function populateHiddenInputs(idsArray) {
+            var container = document.getElementById('hiddenInputsContainer');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            idsArray.forEach(function(id) {
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'selected_products[]';
+                input.value = id;
+                container.appendChild(input);
+            });
+        }
+        
         // ============ DOM ELEMENTS ============
         var checkAll = document.getElementById('checkAll');
-        var productCheckboxes = document.querySelectorAll('.product-checkbox');
         var countSelected = document.getElementById('countSelected');
+        var countStored = document.getElementById('countStored');
         var printForm = document.getElementById('printForm');
         var loadingOverlay = document.getElementById('loadingOverlay');
         var previewModal = document.getElementById('previewModal');
         var previewContent = document.getElementById('previewContent');
-        var btnPrintSelected = document.getElementById('btnPrintSelected');
+        var storageInfo = document.getElementById('storageInfo');
+        var storageTotalCount = document.getElementById('storageTotalCount');
         
-        // ============ UPDATE COUNTER ============
-        function updateCount() {
-            var checked = document.querySelectorAll('.product-checkbox:checked');
-            var count = checked.length;
+        // ============ UPDATE COUNTERS ============
+        function updateCounters() {
+            var checkedCount = document.querySelectorAll('.product-checkbox:checked').length;
+            var totalStored = getStoredCount();
             
             if (countSelected) {
-                countSelected.textContent = count;
+                countSelected.textContent = checkedCount;
             }
             
-            // Disable print button if 0 selected
-            if (btnPrintSelected) {
-                btnPrintSelected.disabled = (count === 0);
+            if (countStored) {
+                countStored.textContent = totalStored;
             }
             
-            // Update checkAll state
-            if (checkAll) {
-                checkAll.checked = (count === productCheckboxes.length && count > 0);
-                checkAll.indeterminate = (count > 0 && count < productCheckboxes.length);
+            // Show/hide storage info
+            if (storageInfo) {
+                if (totalStored > 0) {
+                    storageInfo.style.display = 'block';
+                    if (storageTotalCount) {
+                        storageTotalCount.textContent = totalStored;
+                    }
+                } else {
+                    storageInfo.style.display = 'none';
+                }
+            }
+            
+            // Update checkAll
+            var allCheckboxes = document.querySelectorAll('.product-checkbox');
+            if (checkAll && allCheckboxes.length > 0) {
+                checkAll.checked = (checkedCount === allCheckboxes.length);
+                checkAll.indeterminate = (checkedCount > 0 && checkedCount < allCheckboxes.length);
             }
         }
         
-        // ============ SELECT ALL ============
-        window.selectAll = function() {
-            productCheckboxes.forEach(function(cb) {
+        // ============ ACTIONS ============
+        
+        // Select all on current page
+        window.selectAllVisible = function() {
+            document.querySelectorAll('.product-checkbox').forEach(function(cb) {
                 cb.checked = true;
             });
-            updateCount();
+            addAllVisibleToStorage();
+            updateCounters();
+            console.log('✅ All visible selected and added to storage');
         };
         
-        // ============ DESELECT ALL ============
-        window.deselectAll = function() {
-            productCheckboxes.forEach(function(cb) {
+        // Deselect all on current page
+        window.deselectAllVisible = function() {
+            document.querySelectorAll('.product-checkbox').forEach(function(cb) {
                 cb.checked = false;
             });
-            updateCount();
+            removeAllVisibleFromStorage();
+            updateCounters();
+            console.log('❌ All visible deselected and removed from storage');
         };
         
-        // ============ TOGGLE ALL ============
-        window.toggleAll = function(source) {
-            productCheckboxes.forEach(function(cb) {
-                cb.checked = source.checked;
-            });
-            updateCount();
-        };
-        
-        // ============ PRINT SELECTED ============
-        window.printSelected = function() {
-            var checked = document.querySelectorAll('.product-checkbox:checked');
-            var count = checked.length;
+        // Print ALL stored products
+        window.printAllStored = function() {
+            var storedIds = getStoredIds();
             
-            if (count === 0) {
-                alert('Pilih minimal 1 produk untuk diprint!');
+            if (storedIds.length === 0) {
+                alert('⚠️ Tidak ada produk tersimpan!\n\nCentang produk terlebih dahulu.');
                 return;
             }
             
-            if (count > 50) {
-                var pages = Math.ceil(count / 21);
-                if (!confirm('Anda akan mencetak ' + count + ' produk (' + pages + ' halaman). Lanjutkan?')) {
+            if (storedIds.length > 50) {
+                var pages = Math.ceil(storedIds.length / 21);
+                if (!confirm('Anda akan mencetak ' + storedIds.length + ' produk (' + pages + ' halaman). Lanjutkan?')) {
                     return;
                 }
             }
+            
+            // Populate hidden inputs
+            populateHiddenInputs(storedIds);
             
             // Show loading
             if (loadingOverlay) {
@@ -840,7 +1034,42 @@ unset($_SESSION['error'], $_SESSION['success']);
                 printForm.submit();
             }
             
-            // Hide loading after delay
+            setTimeout(function() {
+                if (loadingOverlay) {
+                    loadingOverlay.classList.remove('show');
+                }
+            }, 3000);
+            
+            console.log('🖨️ Printing ' + storedIds.length + ' stored products');
+        };
+        
+        // Print only currently checked/visible products
+        window.printVisible = function() {
+            var checkedIds = [];
+            document.querySelectorAll('.product-checkbox:checked').forEach(function(cb) {
+                checkedIds.push(cb.value);
+            });
+            
+            if (checkedIds.length === 0) {
+                var totalStored = getStoredCount();
+                alert('⚠️ Tidak ada produk tercentang di halaman ini!\n\nGunakan tombol "Print Semua Tersimpan" untuk print ' + totalStored + ' produk yang tersimpan.');
+                return;
+            }
+            
+            // Also merge to storage
+            mergeCheckedToStorage();
+            
+            // Populate hidden inputs
+            populateHiddenInputs(checkedIds);
+            
+            if (loadingOverlay) {
+                loadingOverlay.classList.add('show');
+            }
+            
+            if (printForm) {
+                printForm.submit();
+            }
+            
             setTimeout(function() {
                 if (loadingOverlay) {
                     loadingOverlay.classList.remove('show');
@@ -848,34 +1077,33 @@ unset($_SESSION['error'], $_SESSION['success']);
             }, 3000);
         };
         
-        // ============ PRINT SINGLE ============
+        // Print single
         window.printSingle = function(productId) {
             if (!productId) return;
             window.open('<?= url('labels/print-single/')?>' + productId, '_blank');
         };
         
-        // ============ PREVIEW LABELS ============
+        // Preview
         window.previewLabels = function() {
-            var selectedIds = [];
-            document.querySelectorAll('.product-checkbox:checked').forEach(function(cb) {
-                selectedIds.push(cb.value);
-            });
+            var storedIds = getStoredIds();
             
-            if (selectedIds.length === 0) {
-                alert('Pilih minimal 1 produk untuk preview!');
+            // Also merge current page
+            mergeCheckedToStorage();
+            storedIds = getStoredIds();
+            
+            if (storedIds.length === 0) {
+                alert('⚠️ Pilih minimal 1 produk!');
                 return;
             }
             
-            // Show modal
             if (previewModal) {
                 previewModal.classList.add('show');
             }
             
             if (previewContent) {
-                previewContent.innerHTML = '<div class="text-center p-5"><div class="spinner"></div><p>Memuat preview...</p></div>';
+                previewContent.innerHTML = '<div class="text-center p-5"><div class="spinner"></div><p>Memuat preview ' + storedIds.length + ' produk...</p></div>';
             }
             
-            // Fetch preview via AJAX
             var xhr = new XMLHttpRequest();
             xhr.open('POST', '<?= route('preview.label')?>', true);
             xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
@@ -908,21 +1136,20 @@ unset($_SESSION['error'], $_SESSION['success']);
                 }
             };
             
-            // Build form data
             var formData = '_token=<?= urlencode($csrf_token) ?>';
-            selectedIds.forEach(function(id) {
+            storedIds.forEach(function(id) {
                 formData += '&selected_products[]=' + encodeURIComponent(id);
             });
             
             xhr.send(formData);
         };
         
-        // ============ PRINT FROM PREVIEW ============
+        // Print from preview
         window.printFromPreview = function() {
             window.print();
         };
         
-        // ============ CLOSE MODAL ============
+        // Close modal
         function closeModal() {
             if (previewModal) {
                 previewModal.classList.remove('show');
@@ -931,121 +1158,143 @@ unset($_SESSION['error'], $_SESSION['success']);
         
         // ============ EVENT LISTENERS ============
         
-        // CheckAll toggle
+        // Individual checkbox change
+        document.querySelectorAll('.product-checkbox').forEach(function(cb) {
+            cb.addEventListener('change', function() {
+                if (this.checked) {
+                    // Add to storage
+                    var storedIds = getStoredIds();
+                    if (storedIds.indexOf(this.value) === -1) {
+                        storedIds.push(this.value);
+                        setStoredIds(storedIds);
+                    }
+                } else {
+                    // Remove from storage
+                    var storedIds = getStoredIds();
+                    var newIds = storedIds.filter(function(id) {
+                        return id !== cb.value;
+                    });
+                    setStoredIds(newIds);
+                }
+                updateCounters();
+            });
+        });
+        
+        // CheckAll
         if (checkAll) {
             checkAll.addEventListener('change', function() {
-                productCheckboxes.forEach(function(cb) {
-                    cb.checked = checkAll.checked;
-                });
-                updateCount();
-            });
-        }
-        
-        // Product checkboxes change
-        productCheckboxes.forEach(function(cb) {
-            cb.addEventListener('change', updateCount);
-        });
-        
-        // Select All button
-        var btnSelectAll = document.getElementById('btnSelectAll');
-        if (btnSelectAll) {
-            btnSelectAll.addEventListener('click', selectAll);
-        }
-        
-        // Deselect All button
-        var btnDeselectAll = document.getElementById('btnDeselectAll');
-        if (btnDeselectAll) {
-            btnDeselectAll.addEventListener('click', deselectAll);
-        }
-        
-        // Print Selected button
-        if (btnPrintSelected) {
-            btnPrintSelected.addEventListener('click', printSelected);
-        }
-        
-        // Preview button
-        var btnPreview = document.getElementById('btnPreview');
-        if (btnPreview) {
-            btnPreview.addEventListener('click', previewLabels);
-        }
-        
-        // Print single buttons
-        document.querySelectorAll('.btn-print-single').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var productId = this.getAttribute('data-id');
-                printSingle(productId);
-            });
-        });
-        
-        // Close modal buttons
-        var btnCloseModal = document.getElementById('btnCloseModal');
-        var btnCloseModal2 = document.getElementById('btnCloseModal2');
-        if (btnCloseModal) btnCloseModal.addEventListener('click', closeModal);
-        if (btnCloseModal2) btnCloseModal2.addEventListener('click', closeModal);
-        
-        // Print from preview
-        var btnPrintPreview = document.getElementById('btnPrintPreview');
-        if (btnPrintPreview) {
-            btnPrintPreview.addEventListener('click', printFromPreview);
-        }
-        
-        // Close modal on background click
-        if (previewModal) {
-            previewModal.addEventListener('click', function(e) {
-                if (e.target === previewModal) {
-                    closeModal();
+                if (this.checked) {
+                    selectAllVisible();
+                } else {
+                    deselectAllVisible();
                 }
             });
         }
         
+        // Select All button
+        document.getElementById('btnSelectAll')?.addEventListener('click', selectAllVisible);
+        
+        // Deselect All button
+        document.getElementById('btnDeselectAll')?.addEventListener('click', deselectAllVisible);
+        
+        // Print All Stored button
+        document.getElementById('btnPrintAllStored')?.addEventListener('click', printAllStored);
+        
+        // Print Visible button
+        document.getElementById('btnPrintVisible')?.addEventListener('click', printVisible);
+        
+        // Preview button
+        document.getElementById('btnPreview')?.addEventListener('click', previewLabels);
+        
+        // Clear Storage button
+        document.getElementById('btnClearStorage')?.addEventListener('click', function() {
+            if (confirm('⚠️ Hapus SEMUA produk yang tersimpan?\n\nIni akan menghapus semua centangan dari semua filter sebelumnya.')) {
+                clearAllStorage();
+                document.querySelectorAll('.product-checkbox').forEach(function(cb) {
+                    cb.checked = false;
+                });
+                updateCounters();
+                alert('✅ Storage dibersihkan!');
+            }
+        });
+        
+        // Print single buttons
+        document.querySelectorAll('.btn-print-single').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                printSingle(this.getAttribute('data-id'));
+            });
+        });
+        
+        // Save before filter/pagination
+        document.getElementById('filterForm')?.addEventListener('submit', function() {
+            mergeCheckedToStorage();
+            console.log('💾 Merged before filter');
+        });
+        
+        document.querySelectorAll('.pagination-link').forEach(function(link) {
+            link.addEventListener('click', function() {
+                mergeCheckedToStorage();
+                console.log('💾 Merged before pagination');
+            });
+        });
+        
+        // Close modal
+        document.getElementById('btnCloseModal')?.addEventListener('click', closeModal);
+        document.getElementById('btnCloseModal2')?.addEventListener('click', closeModal);
+        document.getElementById('btnPrintPreview')?.addEventListener('click', printFromPreview);
+        
+        if (previewModal) {
+            previewModal.addEventListener('click', function(e) {
+                if (e.target === previewModal) closeModal();
+            });
+        }
+        
+        // Reset buttons
+        document.getElementById('btnResetAll')?.addEventListener('click', function() {
+            clearAllStorage();
+        });
+        document.getElementById('btnResetFilter')?.addEventListener('click', function() {
+            clearAllStorage();
+        });
+        
         // Keyboard shortcuts
         document.addEventListener('keydown', function(e) {
-            // Ctrl+A
             if (e.ctrlKey && e.key === 'a') {
                 e.preventDefault();
-                selectAll();
+                selectAllVisible();
             }
-            
-            // Ctrl+P
             if (e.ctrlKey && e.key === 'p' && !e.shiftKey) {
                 e.preventDefault();
-                printSelected();
+                printAllStored();
             }
-            
-            // Escape to close modal
             if (e.key === 'Escape') {
                 closeModal();
             }
         });
         
         // Auto-hide alerts
-        var alerts = document.querySelectorAll('.alert');
-        alerts.forEach(function(alert) {
+        document.querySelectorAll('.alert').forEach(function(alert) {
             setTimeout(function() {
                 if (alert.parentElement) {
                     alert.style.opacity = '0';
                     alert.style.transition = 'opacity 0.5s';
                     setTimeout(function() {
-                        if (alert.parentElement) {
-                            alert.remove();
-                        }
+                        if (alert.parentElement) alert.remove();
                     }, 500);
                 }
             }, 5000);
         });
         
-        // Initialize
-        updateCount();
+        // ============ INITIALIZE ============
+        loadStoredToCheckboxes();
+        updateCounters();
         
-        // Expose functions to global scope (for onclick attributes)
-        console.log('✅ Label Print System Ready!');
-        console.log('   - selectAll()');
-        console.log('   - deselectAll()');
-        console.log('   - toggleAll()');
-        console.log('   - printSelected()');
-        console.log('   - printSingle(id)');
-        console.log('   - previewLabels()');
-        console.log('   - printFromPreview()');
+        console.log('✅ Label Print System Ready (MERGE mode)!');
+        console.log('📦 Total stored products:', getStoredCount());
+        console.log('🔄 Checkbox akan MERGE ke storage, bukan overwrite!');
+        console.log('   - Centang = TAMBAH ke storage');
+        console.log('   - Uncentang = HAPUS dari storage');
+        console.log('   - Filter/ganti halaman = KEEP storage');
         
     })();
     </script>
