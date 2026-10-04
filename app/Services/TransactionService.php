@@ -123,11 +123,11 @@ class TransactionService
                 }
             // }
             DB::commit();
-            if(!empty($data['member'])) {
-                register_shutdown_function(function() use ($transaction, $data) {
-                    $this->sendPointToApi($transaction, $data['member']);
-                });
-            }
+            // if(!empty($data['member'])) {
+            //     register_shutdown_function(function() use ($transaction, $data) {
+            //         $this->sendPointToApi($transaction, $data['member']);
+            //     });
+            // }
             return [
                 'status' => true,
                 'statusCode' => 201,
@@ -153,17 +153,253 @@ class TransactionService
 
     public function setupTransaction(array $data)
     {
-        $date = Date::Now();
+        $now = Date::Now();
+        $today = Date::parse(Date::Now())->format('Y-m-d');
+
+        $pendingCashbacks = Cashback::query()
+        ->where('type', '=', 'EARN')
+        ->whereNull('synced_at')
+        ->where('sync_attempts', '<', 10)
+        ->orderBy('created_at', 'asc')
+        ->get();
+
         $setup = SetupTransaction::create([
-            'closing_date' => $date,
+            'closing_date' => $now,
             'status' => 1,
         ]);
+
+        $syncResult = [
+            'total'   => 0,
+            'success' => 0,
+            'failed'  => 0,
+        ];
+
+        if (!empty($pendingCashbacks) && count($pendingCashbacks) > 0) {
+            $syncResult = $this->sendBulkPointToApi($pendingCashbacks);
+        }
+
         return [
             'success' => true,
             'statusCode' => 201,
             'message' => 'Closing Transaksi sukses',
-            'data' => $setup->closing_date
+            'data' => $setup->closing_date,
+            'sync'       => $syncResult,
         ];
+    }
+
+    private function sendBulkPointToApi($cashbacks): array
+    {
+        if (!is_array($cashbacks)) {
+            $cashbacks = method_exists($cashbacks, 'all') ? $cashbacks->all() : (array) $cashbacks;
+        }
+        $cashbacks = array_values($cashbacks);
+
+        if (empty($cashbacks)) {
+            return ['total' => 0, 'success' => 0, 'failed' => 0];
+        }
+
+        $apiUrl    = 'https://koperasi-stanley.com/api/v1/store/point';
+        $batchSize = 10;
+        $timeout   = 15;
+        $connect   = 5;
+
+        $result = [
+            'total'   => count($cashbacks),
+            'success' => 0,
+            'failed'  => 0,
+        ];
+
+        $get = function ($item, $key, $default = null) {
+            if (is_array($item))  return $item[$key]  ?? $default;
+            if (is_object($item)) return $item->$key  ?? $default;
+            return $default;
+        };
+
+        $trxIds = [];
+        foreach ($cashbacks as $cb) {
+            $tid = $get($cb, 'transaction_id');
+            if ($tid !== null) $trxIds[] = $tid;
+        }
+        $trxIds = array_values(array_unique($trxIds));
+
+        $trxMap = [];
+        if (!empty($trxIds)) {
+            $trxList = Transaction::query()->whereIn('id', $trxIds)->get();
+            if (!is_array($trxList) && method_exists($trxList, 'all')) {
+                $trxList = $trxList->all();
+            }
+            foreach ($trxList as $t) {
+                $id = $get($t, 'id');
+                if ($id !== null) $trxMap[$id] = $t;
+            }
+        }
+
+        foreach (array_chunk($cashbacks, $batchSize) as $chunk) {
+            $mh      = curl_multi_init();
+            $handles = [];
+
+            foreach ($chunk as $cb) {
+                $cbId   = $get($cb, 'id');
+                $trxId  = $get($cb, 'transaction_id');
+                $member = $get($cb, 'member');
+                $amount = $get($cb, 'amount');
+                $balAft = $get($cb, 'balance_after');
+                $descr  = $get($cb, 'description');
+                $attmpt = (int) $get($cb, 'sync_attempts', 0);
+
+                $trx = $trxMap[$trxId] ?? null;
+
+                if (!$trx) {
+                    $this->markCashbackSyncError(
+                        $cbId,
+                        'Transaction #' . $trxId . ' not found',
+                        $attmpt
+                    );
+                    $result['failed']++;
+                    continue;
+                }
+
+                $payload = json_encode([
+                    'username'      => $member,
+                    'no_transaksi'  => $get($trx, 'invoice_number'),
+                    'tgl_transaksi' => $get($trx, 'transaction_date'),
+                    'point_masuk'   => $amount,
+                    'point_keluar'  => 0,
+                    'saldo_point'   => $balAft,
+                    'status'        => 'success',
+                    'description'   => $descr,
+                ]);
+
+                $ch = curl_init($apiUrl);
+                curl_setopt_array($ch, [
+                    CURLOPT_POST           => true,
+                    CURLOPT_POSTFIELDS     => $payload,
+                    CURLOPT_HTTPHEADER     => [
+                        'Content-Type: application/json',
+                        'Accept: application/json',
+                    ],
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT        => $timeout,
+                    CURLOPT_CONNECTTIMEOUT => $connect,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_SSL_VERIFYHOST => false,
+                ]);
+
+                curl_multi_add_handle($mh, $ch);
+                $handles[(int) $ch] = [
+                    'handle'   => $ch,
+                    'cb_id'    => $cbId,
+                    'attempts' => $attmpt,
+                ];
+            }
+
+            $running = null;
+            do {
+                $status = curl_multi_exec($mh, $running);
+                if ($running) curl_multi_select($mh, 1.0);
+                if ($status !== CURLM_OK) break;
+            } while ($running > 0);
+
+            foreach ($handles as $item) {
+                $ch       = $item['handle'];
+                $cbId     = $item['cb_id'];
+                $attempts = $item['attempts'];
+
+                $code   = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $body   = curl_multi_getcontent($ch);
+                $errno  = curl_errno($ch);
+                $errmsg = curl_error($ch);
+
+                if ($errno === 0 && $code >= 200 && $code < 300) {
+                    $this->markCashbackSynced($cbId, $attempts);
+                    $result['success']++;
+                } else {
+                    $errorText = $errno !== 0
+                        ? "cURL err {$errno}: {$errmsg}"
+                        : "HTTP {$code}: " . substr((string) $body, 0, 180);
+
+                    $this->markCashbackSyncError($cbId, $errorText, $attempts);
+                    $result['failed']++;
+                    error_log("[Bulk Sync] cashback #{$cbId} failed: {$errorText}");
+                }
+
+                curl_multi_remove_handle($mh, $ch);
+                curl_close($ch);
+            }
+
+            curl_multi_close($mh);
+        }
+
+        error_log(sprintf(
+            '[Closing Sync] total=%d success=%d failed=%d',
+            $result['total'], $result['success'], $result['failed']
+        ));
+
+        return $result;
+    }
+
+    /**
+     * Tandai cashback sukses ter-sync.
+     */
+    private function markCashbackSynced($cbId, int $attempts): void
+    {
+        if ($cbId === null) return;
+
+        try {
+            $cb = Cashback::query()->where('id', '=', $cbId)->first();
+
+            if (!$cb) {
+                error_log("[markSynced] Cashback #{$cbId} not found");
+                return;
+            }
+
+            $cb->synced_at     = Date::Now();
+            $cb->sync_error    = null;
+            $cb->sync_attempts = $attempts + 1;
+
+            $cb->save();
+
+        } catch (\Throwable $e) {
+            error_log("[markSynced] #{$cbId} failed: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Tandai cashback gagal (simpan error, attempts +1).
+     */
+    private function markCashbackSyncError($cbId, string $errorText, int $attempts): void
+    {
+        if ($cbId === null) return;
+
+        try {
+            $cb = Cashback::query()->where('id', '=', $cbId)->first();
+
+            if (!$cb) {
+                error_log("[markError] Cashback #{$cbId} not found");
+                return;
+            }
+
+            $cb->sync_error    = $errorText;
+            $cb->sync_attempts = $attempts + 1;
+
+            $cb->save();
+
+        } catch (\Throwable $e) {
+            error_log("[markError] #{$cbId} failed: " . $e->getMessage());
+        }
+    }
+
+    public function retryPendingPointSync(): array
+    {
+        $pending = Cashback::query()
+            ->where('type', '=', 'earn')
+            ->whereNull('synced_at')
+            ->where('sync_attempts', '<', 10)
+            ->orderBy('created_at', 'asc')
+            ->limit(500)
+            ->get();
+
+        return $this->sendBulkPointToApi($pending);
     }
 
     private function sendPointToApi($transaction, $member): void

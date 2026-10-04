@@ -12,6 +12,7 @@ use App\Controllers\ReportController;
 use App\Controllers\TransactionController;
 use App\Controllers\SupplierController;
 use App\Controllers\UserController;
+use App\Services\TransactionService;
 use Bpjs\Framework\Helpers\AuthMiddleware;
 use Bpjs\Framework\Helpers\Response;
 use Bpjs\Framework\Helpers\Route;
@@ -33,6 +34,16 @@ Route::group([AuthMiddleware::class], function(){
     Route::get('/data/transaction-records',[ReportController::class,'getTransactionRecords'])->name('records.transaction');
     Route::post('/closing/transaction',[TransactionController::class,'setupTransaction'])->name('closing.transaction');
     Route::post('/qris-generator',[QrisController::class,'generate'])->name('qris.generator');
+
+    // routes.php
+    Route::post('/transaction/retry-sync', function ($transactionService = TransactionService::class) {
+        $result = $transactionService->retryPendingPointSync();
+        echo json_encode([
+            'success' => true,
+            'message' => "Retry selesai: {$result['success']}/{$result['total']}",
+            'data'    => $result,
+        ]);
+    });
 });
 // Route::get('/chart/label',[ChartController::class,'indexlabel']);
 
